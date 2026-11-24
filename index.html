@@ -161,7 +161,9 @@ dialog.wide{width:min(980px,calc(100vw - 16px))}
 .rv.skip{opacity:.5}
 .rv.weird{border-color:var(--pink)}
 .rv input[type=text],.rv input[type=number],.rv select{width:100%;min-height:42px}
-.rv1{display:grid;grid-template-columns:30px minmax(0,1fr) 120px 64px;gap:8px;align-items:center}
+.crop{display:block;width:100%;max-height:120px;object-fit:contain;object-position:right;border-radius:8px;border:1px solid var(--line);background:#fff}
+.rawl{font-size:13px;color:var(--mut);overflow-wrap:anywhere}
+.rv1{display:grid;grid-template-columns:30px minmax(0,1fr) 110px 84px;gap:8px;align-items:center}
 .rv1 input[type=checkbox]{width:22px;height:22px;accent-color:var(--sea)}
 .rv2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px}
 .rv3{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -177,7 +179,7 @@ dialog.wide{width:min(980px,calc(100vw - 16px))}
 .rvf{position:sticky;bottom:0;background:var(--bg)}
 .raw{font-size:13px;white-space:pre-wrap;max-height:240px;overflow:auto;background:var(--card);padding:10px;border-radius:10px}
 .thumbs{display:flex;gap:8px;overflow-x:auto}.thumbs img{height:220px;border-radius:8px;border:1px solid var(--line)}
-@media(max-width:600px){.rv1{grid-template-columns:30px minmax(0,1fr) 96px}.rv1 .dayin{display:none}.rv2{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.rv1{grid-template-columns:30px minmax(0,1fr) 92px}.rv1 .dayin{grid-column:2}.rv2{grid-template-columns:minmax(0,1fr)}}
 .oform .wide{grid-column:1/-1}
 .od .day{font:500 15px Rubik,sans-serif;color:var(--mut);text-align:center}
 textarea{width:100%;min-height:80px;resize:vertical}
@@ -541,8 +543,8 @@ const GROUPS=[
 const normB=s=>String(s||'').toLowerCase().replace(/[‎‏‪-‮"'׳״`]/g,'').replace(/[^0-9a-zא-ת&]+/g,' ').trim();
 const clean=s=>String(s||'').replace(/\*/g,' ').replace(/בע"?מ|בע״מ|בעמ/g,' ').replace(/\b\d{3,}\b/g,' ').replace(/\s{2,}/g,' ').trim();
 function weird(s){const t=String(s||'').trim(),nos=t.replace(/\s/g,'');const L=(t.match(/[a-zA-Zא-ת]/g)||[]).length;return /\*/.test(t)||/\d{4,}/.test(t)||L<nos.length*.7||(/^[A-Z0-9 .*_\-&]+$/.test(t)&&t.length>10)||L<3}
-function groupOf(b){const n=' '+normB(b)+' ',toks=n.trim().split(' ');for(const g of GROUPS)for(const k of g.k){const kk=normB(k);if(!kk)continue;if(kk.length<=3?toks.includes(kk):n.includes(' '+kk)||n.includes(kk+' ')||n.includes(kk))return g}return null}
-function sim(a,b){a=normB(a);b=normB(b);if(!a||!b)return 0;if(a==b)return 1;if(a.length>3&&b.length>3&&(a.includes(b)||b.includes(a)))return .85;const A=new Set(a.split(' ').filter(w=>w.length>1)),B=new Set(b.split(' ').filter(w=>w.length>1));let i=0;for(const w of A)if(B.has(w))i++;return i/Math.max(1,Math.min(A.size,B.size))*.8}
+function groupOf(b){const n=' '+normB(b)+' ',toks=n.trim().split(' ');for(const g of GROUPS)for(const k of g.k){const kk=normB(k);if(!kk)continue;if(kk.length<=3?toks.includes(kk):n.includes(kk))return g}
+ for(const g of GROUPS)for(const k of g.k){const kk=normB(k);if(kk.length<5||kk.includes(' '))continue;if(toks.some(t=>t.length>=4&&lr(t,kk)>=.8))return g}return null}
 const AMT=/-?\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|-?\d+\.\d{1,2}|-?\d+/g;
 const DATE=/(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?/;
 const SKIP=/סה"?כ|סה״כ|סך הכל|סך הכול|יתרה|מסגרת|לתשלום|total|balance|תאריך עסקה|שם בית|סכום עסקה|סכום חיוב|עמוד \d|ריבית|מספר כרטיס/i;
@@ -567,7 +569,7 @@ function fromTable(rows){
  const out=[];let ci=null;
  if(hi>=0){const h=rows[hi];const ch=h.findIndex(c=>/סכום\s*ה?חיוב|לחיוב/.test(c));ci={d:h.findIndex(c=>/תאריך/.test(c)),n:h.findIndex(c=>/בית\s*ה?עסק|תיאור|פירוט|שם/.test(c)),a:ch>=0?ch:h.findIndex(c=>/סכום/.test(c))};if(ci.n<0||ci.a<0)ci=null}
  for(const r of rows.slice(hi+1)){if(!r.some(Boolean))continue;const all=r.join('  ');
-  if(ci){const name=r[ci.n];const v=+String(r[ci.a]).replace(/[^\d.\-]/g,'');if(!name||!v||SKIP.test(all))continue;const dm=(r[ci.d]||'').match(DATE);out.push({bill:name.replace(/[$€£]\s?\d[\d.,]*/g,' ').replace(/\s{2,}/g,' ').trim(),a:Math.round(Math.abs(v)*100)/100,day:dm?+dm[1]:null,mo:dm?+dm[2]:null,foreign:/[$€£]|usd|eur|דולר|יורו/i.test(all)})}
+  if(ci){const name=r[ci.n];const v=+String(r[ci.a]).replace(/[^\d.\-]/g,'');if(!name||!v||SKIP.test(all))continue;const dm=(r[ci.d]||'').match(DATE);out.push({bill:name.replace(/[$€£]\s?\d[\d.,]*/g,' ').replace(/\s{2,}/g,' ').trim(),a:Math.round(Math.abs(v)*100)/100,day:dm?+dm[1]:null,mo:dm?+dm[2]:null,foreign:/[$€£]|usd|eur|דולר|יורו/i.test(all),raw:r.filter(Boolean).join(' · ')})}
   else{const p=parseLine(all);if(p)out.push(p)}}
  return out;
 }
@@ -575,7 +577,85 @@ function csvRows(t){const first=t.split('\n')[0]||'';const d=first.split(';').le
  for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}else if(c=='"'&&f==='')q=true;else if(c==d){row.push(f);f=''}else if(c=='\n'){row.push(f);rows.push(row);row=[];f=''}else if(c!='\r')f+=c}
  if(f||row.length){row.push(f);rows.push(row)}return rows}
 function loadJS(src){return new Promise((ok,no)=>{if(document.querySelector(`script[data-src="${src}"][data-ok]`))return ok();const s=document.createElement('script');s.src=src;s.dataset.src=src;s.onload=()=>{s.dataset.ok=1;ok()};s.onerror=()=>{s.remove();no(new Error('net'))};document.head.append(s)})}
-async function prep(file){const bmp=await createImageBitmap(file);const w=bmp.width,h=bmp.height;const sc=w<1400?Math.min(2.5,1400/w):w>2600?2600/w:1;const c=document.createElement('canvas');c.width=Math.round(w*sc);c.height=Math.round(h*sc);const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.filter='grayscale(1) contrast(1.4)';x.imageSmoothingQuality='high';x.drawImage(bmp,0,0,c.width,c.height);return c}
+
+function lev(a,b){if(a==b)return 0;const m=a.length,n=b.length;if(!m||!n)return m||n;let p=Array.from({length:n+1},(_,j)=>j);for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]==b[j-1]?0:1));p=c}return p[n]}
+const lr=(a,b)=>{a=normB(a);b=normB(b);if(!a||!b)return 0;return 1-lev(a,b)/Math.max(a.length,b.length)};
+function sim(a,b){a=normB(a);b=normB(b);if(!a||!b)return 0;if(a==b)return 1;if(a.length>3&&b.length>3&&(a.includes(b)||b.includes(a)))return .85;const A=new Set(a.split(' ').filter(w=>w.length>1)),B=new Set(b.split(' ').filter(w=>w.length>1));let i=0;for(const w of A)if(B.has(w))i++;const t=i/Math.max(1,Math.min(A.size,B.size))*.8;return Math.max(t,lr(a,b)*.92)}
+/* finds a remembered merchant even when OCR read it slightly differently */
+function mapFind(nb){if(S.map[nb])return S.map[nb];let best=null,bs=0;for(const k of Object.keys(S.map)){const s=lr(k,nb);if(s>bs){bs=s;best=k}}return bs>=.78?S.map[best]:null}
+const HM={'ינו':1,'פבר':2,'מרץ':3,'מרס':3,'אפר':4,'מאי':5,'יונ':6,'יול':7,'אוג':8,'ספט':9,'אוק':10,'נוב':11,'דצמ':12,'jan':1,'feb':2,'mar':3,'apr':4,'may':5,'jun':6,'jul':7,'aug':8,'sep':9,'oct':10,'nov':11,'dec':12};
+const NOISE=/^\s*(\d{1,2}:\d{2}|\d{1,3}%|כל העסקאות|עסקאות|חיפוש|סינון|פירוט חיובים|החודש|חודש קודם|לכל העסקאות|הצג עוד|פרטים נוספים)\s*$/;
+/* reads one OCR line: amount, date and name may each be missing */
+function analyze(raw){
+ let t=String(raw||'').replace(/[‎‏‪-‮]/g,'').replace(/[|_~\[\]{}©®]/g,' ').replace(/\b\d{1,2}:\d{2}\b/g,' ').trim();
+ const o={raw:String(raw||'').trim(),name:'',amt:null,day:null,mo:null,foreign:false,skip:false};
+ if(t.length<2||NOISE.test(t))return{...o,skip:true};
+ if(SKIP.test(t))return{...o,skip:true};
+ const dm=t.match(DATE);if(dm&&+dm[1]>=1&&+dm[1]<=31&&+dm[2]>=1&&+dm[2]<=12){o.day=+dm[1];o.mo=+dm[2];t=t.replace(dm[0],' ')}
+ else{const hm=t.match(/(\d{1,2})\s*(?:ב|ל)?\s*(ינו|פבר|מרץ|מרס|אפר|מאי|יונ|יול|אוג|ספט|אוק|נוב|דצמ|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[\p{L}׳']*/iu);if(hm){o.day=+hm[1];o.mo=HM[hm[2].toLowerCase()];t=t.replace(hm[0],' ')}
+  else if(/(^|\s)היום(\s|$)/.test(t)){o.day=now.getDate();o.mo=CM+1;t=t.replace('היום',' ')}else if(/(^|\s)אתמול(\s|$)/.test(t)){const d=new Date(Date.now()-864e5);o.day=d.getDate();o.mo=d.getMonth()+1;t=t.replace('אתמול',' ')}}
+ o.foreign=/[$€£]|usd|eur|gbp|דולר|יורו|מט"?ח/i.test(t);
+ // OCR fixes inside numbers: O→0, l/I→1, "1 020.50" → 1020.50, "245,90" → 245.90
+ t=t.replace(/(\d)[oO](?=\d)/g,'$10').replace(/(\d)[lI](?=\d)/g,'$11').replace(/(\d{1,3}) (\d{3}[.,]\d{2})\b/g,'$1$2').replace(/\b(\d+),(\d{2})\b(?![\d,])/g,'$1.$2');
+ const cur=/[₪$€£]|ש"ח|ש״ח/.test(t);
+ const nums=[...t.matchAll(AMT)].map(m=>({s:m[0],v:+m[0].replace(/,/g,'')}));
+ const money=nums.filter(n=>/\.\d{2}$/.test(n.s)||n.s.includes(','));
+ const pool=money.length?money:cur?nums.filter(n=>Math.abs(n.v)>0&&n.s.replace('-','').length<=6):[];
+ const pick=pool.at(-1);if(pick&&pick.v)o.amt=Math.round(Math.abs(pick.v)*100)/100;
+ let name=t;for(const n of nums)name=name.replace(n.s,' ');
+ name=name.replace(/[₪$€£]|ש"ח|ש״ח|\b(usd|eur|nis|ils|gbp)\b/gi,' ').replace(/[^\p{L}\p{N}*&'".\- ]/gu,' ').replace(/(^|\s)[.\-'"*]+(?=\s|$)/g,' ').replace(/(^|\s)\p{L}(?=\s|$)/gu,' ').replace(/\s{2,}/g,' ').trim();
+ if((name.match(/\p{L}/gu)||[]).length>=2)o.name=name;
+ return o;
+}
+/* stitches a statement together from OCR lines: name and amount on the same line, or the name on the line above and the date on the line beside it */
+function parseOcr(L){
+ const A=L.map(l=>({...analyze(l.text),bbox:l.bbox,img:l.img}));const out=[];let pend=null;
+ const isMeta=a=>a&&!a.skip&&a.amt==null&&a.day!=null;
+ for(let i=0;i<A.length;i++){const a=A[i];if(a.skip||a.used){continue}
+  if(a.amt!=null){let name=a.name,src=[i],hint='';
+   if(name&&a.day!=null&&pend!=null&&pend==i-1&&A[pend].day==null&&!A[pend].used){hint=name;name=A[pend].name;src.unshift(pend);A[pend].used=1}
+   else if(!name||(name.match(/\p{L}/gu)||[]).length<3){
+    if(pend!=null&&i-pend<=2&&!A[pend].used){name=A[pend].name;src.unshift(pend);A[pend].used=1}
+    else if(A[i+1]&&A[i+1].amt==null&&A[i+1].name&&!isMeta(A[i+1])){name=A[i+1].name;src.push(i+1);A[i+1].used=1}
+    else if(isMeta(A[i-1])&&A[i-1].name){name=A[i-1].name;src.unshift(i-1)}}
+   if(!name){pend=null;continue}
+   let day=a.day,mo=a.mo;
+   if(day==null)for(const j of[i+1,i-1,i+2,i-2]){const b=A[j];if(b&&b.amt==null&&b.day!=null&&!b.usedDate){day=b.day;mo=b.mo;b.usedDate=1;src.push(j);break}}
+   const ls=src.map(j=>A[j]).filter(x=>x.bbox&&x.img===a.img);
+   out.push({bill:name,hint,a:a.amt,day,mo,foreign:a.foreign||src.some(j=>A[j].foreign),raw:src.sort((x,y)=>x-y).map(j=>A[j].raw).join(' / '),img:a.img,box:ls.length?{y0:Math.min(...ls.map(x=>x.bbox.y0)),y1:Math.max(...ls.map(x=>x.bbox.y1))}:null});
+   pend=null}
+  else if(a.name&&!isMeta(a))pend=i}
+ return out;
+}
+function canvasOf(bmp,w,h){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(bmp,0,0,w,h);return c}
+/* prepares a photo for OCR: right size, grey, dark mode flipped to light, contrast stretched */
+async function prep(file){
+ const bmp=await createImageBitmap(file);const sc=Math.min(3,Math.max(1,1800/bmp.width));const w=Math.round(bmp.width*sc),h=Math.round(bmp.height*sc);
+ const orig=canvasOf(bmp,w,h),c=canvasOf(bmp,w,h),x=c.getContext('2d'),d=x.getImageData(0,0,w,h),p=d.data;
+ const hist=new Uint32Array(256);let sum=0;for(let i=0;i<p.length;i+=4){const g=(p[i]*.299+p[i+1]*.587+p[i+2]*.114)|0;p[i]=g;hist[g]++;sum+=g}
+ const n=p.length/4,inv=sum/n<115;let lo=0,hi=255,acc=0;for(let g=0;g<256;g++){acc+=hist[g];if(acc>n*.02){lo=g;break}}acc=0;for(let g=255;g>=0;g--){acc+=hist[g];if(acc>n*.02){hi=g;break}}
+ const span=Math.max(1,hi-lo);for(let i=0;i<p.length;i+=4){let g=(p[i]-lo)*255/span;g=g<0?0:g>255?255:g;if(inv)g=255-g;p[i]=p[i+1]=p[i+2]=g}
+ x.putImageData(d,0,0);return{c,orig};
+}
+function linesOf(data,img){let ls=data.lines;if(!ls?.length&&data.blocks)ls=data.blocks.flatMap(b=>(b.paragraphs||[]).flatMap(p=>p.lines||[]));if(!ls?.length)ls=String(data.text||'').split('\n').map(t=>({text:t}));return ls.map(l=>({text:l.text,bbox:l.bbox,img}))}
+const score=rows=>rows.reduce((s,r)=>s+1+(r.day?.5:0)+((r.bill.match(/\p{L}/gu)||[]).length>3?.3:0),0);
+function cropOf(orig,box){if(!box)return'';const pad=10,y0=Math.max(0,box.y0-pad),h=Math.min(orig.height-y0,box.y1-box.y0+pad*2);if(h<4)return'';const W=Math.min(760,orig.width),k=W/orig.width,c=document.createElement('canvas');c.width=W;c.height=Math.round(h*k);c.getContext('2d').drawImage(orig,0,y0,orig.width,h,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.78)}
+async function runImages(files){
+ const urls=files.map(f=>URL.createObjectURL(f));
+ try{
+  let cur=0,pass=0;const N=files.length*2;prog(.02,'טוען את רכיב זיהוי הטקסט…');await loadJS(TESS);
+  const W=await Tesseract.createWorker(['heb','eng'],1,{logger:m=>{if(!$('#scBar'))return;if(m.status=='recognizing text')prog(.2+.8*((pass+m.progress)/N),`קורא את התמונה ${cur+1} מתוך ${files.length}${pass%2?', קריאה שנייה בשיטה אחרת':''}…`);else if(/load/.test(m.status))prog(.04+.16*(m.progress||0),'מוריד את רכיב העברית (פעם אחת בלבד)…')}});
+  await W.setParameters({preserve_interword_spaces:'1',user_defined_dpi:'300'});
+  let all=[],text='';
+  for(cur=0;cur<files.length;cur++){const{c,orig}=await prep(files[cur]);let best=null;
+   for(const psm of['6','4']){await W.setParameters({tessedit_pageseg_mode:psm});const{data}=await W.recognize(c);pass++;const rows=parseOcr(linesOf(data,cur));if(!best||score(rows)>score(best.rows))best={rows,text:data.text}}
+   for(const r of best.rows)r.crop=cropOf(orig,r.box);all.push(...best.rows);text+=(files.length>1?`— תמונה ${cur+1} —\n`:'')+best.text+'\n'}
+  await W.terminate();
+  // same charge twice (overlapping screenshots): keep one
+  const seen=new Set();all=all.filter(r=>{const k=normB(r.bill)+'|'+r.a+'|'+(r.day||'');if(seen.has(k))return false;seen.add(k);return true});
+  review(all,{text,urls});
+ }catch(e){console.error(e);if($('#scStat'))prog(0,navigator.onLine?'משהו השתבש בזיהוי. נסו שוב, או השתמשו בקובץ אקסל.':'בפעם הראשונה צריך אינטרנט כדי להוריד את רכיב הזיהוי. אחר כך זה עובד גם בלי.')}
+}
 
 let R=null;
 function scanDlg(){
@@ -591,18 +671,6 @@ function scanDlg(){
  $('#scFile').addEventListener('change',e=>e.target.files[0]&&runFile(e.target.files[0]));
 }
 function prog(p,t){$('#scProg').hidden=false;$('#scBar').style.width=Math.round(p*100)+'%';$('#scStat').textContent=t}
-async function runImages(files){
- const urls=files.map(f=>URL.createObjectURL(f));
- try{
-  let cur=0;prog(.02,'טוען את רכיב זיהוי הטקסט…');await loadJS(TESS);
-  const W=await Tesseract.createWorker(['heb','eng'],1,{logger:m=>{if(!$('#scBar'))return;if(m.status=='recognizing text')prog(.25+.75*((cur+m.progress)/files.length),`קורא את התמונה ${cur+1} מתוך ${files.length}…`);else if(/load/.test(m.status))prog(.05+.2*(m.progress||0),'מוריד את רכיב העברית (פעם אחת בלבד)…')}});
-  await W.setParameters({tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'});
-  let text='';
-  for(cur=0;cur<files.length;cur++){const c=await prep(files[cur]);const{data}=await W.recognize(c);text+=data.text+'\n'}
-  await W.terminate();
-  review(text.split('\n').map(parseLine).filter(Boolean),{text,urls});
- }catch(e){console.error(e);if($('#scStat'))prog(0,navigator.onLine?'משהו השתבש בזיהוי. נסו שוב, או השתמשו בקובץ אקסל.':'בפעם הראשונה צריך אינטרנט כדי להוריד את רכיב הזיהוי. אחר כך זה עובד גם בלי.')}
-}
 async function runFile(f){
  try{prog(.2,'קורא את הקובץ…');let rows;
   if(/\.xlsx?$/i.test(f.name)){await loadJS(XLSX_URL);const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellDates:false});rows=[];for(const n of wb.SheetNames)rows.push(...XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,dateNF:'dd/mm/yyyy',defval:''}))}
@@ -612,16 +680,16 @@ async function runFile(f){
 }
 function guessYm(ps){const c={};for(const p of ps)if(p.mo)c[p.mo]=(c[p.mo]||0)+1;const mo=+Object.entries(c).sort((a,b)=>b[1]-a[1])[0]?.[0];if(!mo)return key(CY,CM);const m=mo-1;return key(m>CM?CY-1:CY,m)}
 function buildRow(p,ym){
- const nb=normB(p.bill),mp=S.map[nb];
+ const nb=normB(p.bill),mp=mapFind(nb);
  let it=mp?.item?S.items.find(i=>i.id==mp.item):null;
  if(!it&&mp?.rec===false)it=null;else if(!it){let best=null,bs=0;for(const x of S.items){const s=Math.max(sim(x.bill,p.bill),sim(x.name,p.bill)*.9)+(Math.abs(x.a-p.a)<.01?.1:0);if(s>bs){bs=s;best=x}}if(bs>=.6)it=best}
- const g=groupOf(p.bill);let cat='',newCat='';const has=id=>id&&S.cats.some(c=>c.id==id);
+ const g=groupOf(p.bill)||(p.hint?groupOf(p.hint):null);let cat='',newCat='';const has=id=>id&&S.cats.some(c=>c.id==id);
  const byName=S.cats.filter(c=>normB(c.name).length>2&&normB(p.bill).includes(normB(c.name)))[0];
  let near=null,ns=0;if(!mp)for(const[k,v]of Object.entries(S.map)){if(!has(v.cat))continue;const sc=sim(k,nb);if(sc>ns){ns=sc;near=v}}
  if(mp&&has(mp.cat))cat=mp.cat;else if(it&&has(it.cat))cat=it.cat;else if(near&&ns>=.55)cat=near.cat;else if(byName)cat=byName.id;else if(g&&has(S.gmap[g.n]))cat=S.gmap[g.n];else if(g){const ex=S.cats.filter(c=>g.h.some(h=>c.name.includes(h))).sort((x,y)=>sim(y.name,p.bill)-sim(x.name,p.bill))[0];if(ex)cat=ex.id;else{cat='__new';newCat=g.n}}
  const rec=mp?!!mp.rec:!!it;
  const st=mp?'known':it?'match':(weird(p.bill)&&!g)?'weird':'new';
- const r={id:uid(),on:true,bill:p.bill,name:mp?.name||(it?it.name:''),a:p.a,day:p.day,cat,newCat,rec,item:it?it.id:'new',f:it?it.f:'m',deb:mp?.deb||it?.deb||(p.foreign?'now':'card'),st,sugRec:!it&&!mp&&g?.rec};
+ const r={id:uid(),on:true,date:p.day?p.day+(p.mo?'/'+p.mo:''):'',crop:p.crop||'',raw:p.raw||'',bill:p.bill,name:mp?.name||(it?it.name:''),a:p.a,day:p.day,cat,newCat,rec,item:it?it.id:'new',f:it?it.f:'m',deb:mp?.deb||it?.deb||(p.foreign?'now':'card'),st,sugRec:!it&&!mp&&g?.rec};
  r.g=st=='weird'?0:rec?1:2;r.gn=g?.n||'';r.auto=!mp&&!it;
  if(isDup(r,ym))r.on=false;return r;
 }
@@ -633,7 +701,8 @@ function review(ps,src){
 function catOpts(r){return `<option value="">ללא קטגוריה</option>${S.cats.map(c=>`<option value="${c.id}" ${c.id==r.cat?'selected':''}>${esc(c.name)}</option>`).join('')}<option value="__new" ${r.cat=='__new'?'selected':''}>${r.cat=='__new'&&r.newCat?'חדשה: '+esc(r.newCat):'קטגוריה חדשה…'}</option>`}
 function rowHTML(r,i){const dup=isDup(r,R.ym);const tag=dup?['dup','נראה שכבר נרשם בחודש הזה']:r.st=='weird'?['weird','שם לא ברור, מה זה?']:r.st=='known'?['known','מוכר מסריקה קודמת']:r.st=='match'?['match','זוהה: '+(S.items.find(x=>x.id==r.item)?.name||'')]:['new','חדש'];
  return`<div class="rv ${r.on?'':'skip'} ${r.st=='weird'?'weird':''}" data-r="${i}">
- <div class="rv1"><input type="checkbox" data-rf="on" ${r.on?'checked':''} aria-label="לכלול שורה"><div><span class="tag ${tag[0]}">${esc(tag[1])}</span><input type="text" data-rf="bill" value="${esc(r.bill)}" aria-label="השם בדף החיובים"></div><input type="number" step="0.01" inputmode="decimal" data-rf="a" value="${esc(r.a)}" aria-label="סכום" class="num"><input class="dayin" type="number" min="1" max="31" data-rf="day" value="${esc(r.day||'')}" placeholder="יום" aria-label="יום"></div>
+ <div class="rv1"><input type="checkbox" data-rf="on" ${r.on?'checked':''} aria-label="לכלול שורה"><div><span class="tag ${tag[0]}">${esc(tag[1])}</span><input type="text" data-rf="bill" value="${esc(r.bill)}" aria-label="השם בדף החיובים"></div><input type="number" step="0.01" inputmode="decimal" data-rf="a" value="${esc(r.a)}" aria-label="סכום" class="num"><input class="dayin" type="text" inputmode="numeric" data-rf="date" value="${esc(r.date)}" placeholder="תאריך" aria-label="תאריך"></div>
+ ${r.crop?`<img class="crop" src="${r.crop}" alt="השורה מהתמונה">`:r.raw?`<div class="rawl">נקרא מהדף: ${esc(r.raw)}</div>`:''}
  <div class="rv2"><input type="text" data-rf="name" value="${esc(r.name)}" placeholder="${r.st=='weird'?'תן לזה שם שתזהה':'השם שלי: '+esc(clean(r.bill))}" aria-label="השם שלי"><div style="display:flex;gap:8px"><select data-rf="cat" aria-label="קטגוריה">${catOpts(r)}</select>${r.cat=='__new'?`<input type="text" data-rf="newCat" value="${esc(r.newCat)}" placeholder="שם הקטגוריה" aria-label="שם הקטגוריה החדשה">`:''}</div></div>
  <div class="rv3"><div class="mini" role="group" aria-label="סוג"><button type="button" data-sa="rec0" class="${r.rec?'':'on'}">חיוב רגיל</button><button type="button" data-sa="rec1" class="${r.rec?'on':''}">הוראת קבע</button></div>
  ${r.rec?`<select data-rf="item" aria-label="איזו הוראת קבע"><option value="new">הוראת קבע חדשה</option>${S.items.map(x=>`<option value="${x.id}" ${x.id==r.item?'selected':''}>${esc(x.name)}</option>`).join('')}</select>${r.item=='new'?`<select data-rf="f" aria-label="תדירות">${Object.entries(FR).map(([k,v])=>`<option value="${k}" ${r.f==k?'selected':''}>${v}</option>`).join('')}</select>`:''}`:''}
@@ -671,6 +740,7 @@ function ensureCat(name){name=(name||'').trim()||'כללי';let c=S.cats.find(c=
 function applyReview(){
  const u=snap(),ym=R.ym,{y,m}=parse(ym);let n=0;
  for(const r of R.rows){if(!r.on||!(+r.a)||!String(r.bill||r.name).trim())continue;
+  r.day=parseInt(String(r.date||'').split(/[\/.\-]/)[0])||null;if(r.day>31)r.day=null;
   const cat=r.cat=='__new'?ensureCat(r.newCat):r.cat;const nm=String(r.name||'').trim()||clean(r.bill)||r.bill;let it=null;
   if(r.rec){it=r.item!='new'?S.items.find(x=>x.id==r.item):null;
    if(!it){it={id:uid(),name:nm,bill:r.bill,cat,f:r.f||'m',a:+r.a,m,spr:false,act:true,sel:true,note:'',paid:{},deb:r.deb,day:r.day||null};S.items.push(it)}
