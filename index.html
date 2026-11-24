@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a2540">
-<meta name="hk-build" content="7">
+<meta name="hk-build" content="8">
 <script>
 /* Android app: if a newer build was downloaded earlier, run it instead of the bundled one */
 (function(){try{var C=window.Capacitor;if(!(C&&C.isNativePlatform&&C.isNativePlatform())||window.__hkLive)return;
@@ -615,12 +615,13 @@ function analyze(raw){
  return o;
 }
 /* stitches a statement together from OCR lines: name and amount on the same line, or the name on the line above and the date on the line beside it */
+const LABEL=/^(מזון|צריכה|מסעדות|דלק|תחבורה|ביגוד|הנעלה|שונות|פנאי|בילוי|בריאות|קוסמטיקה|תקשורת|ריהוט|חשמל|ביטוח|אופנה|טיסות|תיירות|עירייה|ממשלה|מוסדות|תרבות|ספורט|חינוך|רכב|בית|ו| )+$/;
 function parseOcr(L,col,Wd){
- const A=L.map(l=>{const a={...analyze(l.text),bbox:l.bbox,img:l.img};if(!a.skip&&l.words){const ds=l.words.filter(w=>w.bbox&&DATE.test(w.text)).sort((p,q)=>q.bbox.x1-p.bbox.x1);if(ds[0]){const m=ds[0].text.match(DATE);if(+m[1]<=31&&+m[2]<=12){a.day=+m[1];a.mo=+m[2]}}const ms=moneyOf(l);const v=pickAmt(ms,col,Wd,rateOf(l));if(v!=null){a.amt=v;if(ms.some(m=>m.cur=='f'))a.foreign=true}}return a});const out=[];let pend=null;
+ const A=L.map(l=>{const a={...analyze(l.text),bbox:l.bbox,img:l.img};if(l.words?.length&&l.words.some(w=>w.confidence!=null)){const cf=l.words.reduce((s,w)=>s+(w.confidence??90),0)/l.words.length;if(cf<50&&a.amt==null){a.skip=true;return a}}if(!a.skip&&l.words){const WD=/(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/;const ds=[...l.words,...(l.nums||[])].filter(w=>w.bbox&&WD.test(w.text)).sort((p,q)=>q.bbox.x1-p.bbox.x1);for(const d of ds){const m=d.text.match(WD);if(+m[1]>=1&&+m[1]<=31&&+m[2]>=1&&+m[2]<=12){a.day=+m[1];a.mo=+m[2];break}}const ms=moneyOf(l);const pk=pickAmt(ms,col,Wd,rateOf(l));if(pk){a.amt=pk.v;a.calc=pk.calc||'';a.calcOk=pk.ok;if(ms.some(m=>m.cur=='f'))a.foreign=true}}return a});const out=[];let pend=null;
  const isMeta=a=>a&&!a.skip&&a.amt==null&&a.day!=null;
  for(let i=0;i<A.length;i++){const a=A[i];if(a.skip||a.used){continue}
   if(a.amt!=null){let name=a.name,src=[i],hint='';
-   if(name&&a.day!=null&&pend!=null&&pend==i-1&&A[pend].day==null&&!A[pend].used){hint=name;name=A[pend].name;src.unshift(pend);A[pend].used=1}
+   if(name&&LABEL.test(name)&&pend!=null&&pend==i-1&&A[pend].day==null&&!A[pend].used){hint=name;name=A[pend].name;src.unshift(pend);A[pend].used=1}
    else if(!name||(name.match(/\p{L}/gu)||[]).length<3){
     if(pend!=null&&i-pend<=2&&!A[pend].used){name=A[pend].name;src.unshift(pend);A[pend].used=1}
     else if(A[i+1]&&A[i+1].amt==null&&A[i+1].name&&!isMeta(A[i+1])){name=A[i+1].name;src.push(i+1);A[i+1].used=1}
@@ -630,7 +631,7 @@ function parseOcr(L,col,Wd){
    if(day==null)for(const j of[i+1,i-1,i+2,i-2]){const b=A[j];if(b&&b.amt==null&&b.day!=null&&!b.usedDate){day=b.day;mo=b.mo;b.usedDate=1;src.push(j);break}}
    const ls=src.map(j=>A[j]).filter(x=>x.bbox&&x.img===a.img);
    const nx=A[i+1],n2=A[i+2];if(nx&&!nx.skip&&!nx.used&&nx.amt==null&&nx.day==null&&nx.name&&nx.name.split(' ').length<=3&&(!n2||n2.skip||n2.day!=null||(n2.amt!=null&&n2.name))){name+=' '+nx.name;nx.used=1;src.push(i+1)}
-   out.push({bill:name,hint,a:a.amt,day,mo,foreign:a.foreign||src.some(j=>A[j].foreign),raw:src.sort((x,y)=>x-y).map(j=>A[j].raw).join(' / '),img:a.img,box:ls.length?{y0:Math.min(...ls.map(x=>x.bbox.y0)),y1:Math.max(...ls.map(x=>x.bbox.y1))}:null});
+   out.push({bill:name,hint,calc:a.calc,calcOk:a.calcOk,a:a.amt,day,mo,foreign:a.foreign||src.some(j=>A[j].foreign),raw:src.sort((x,y)=>x-y).map(j=>A[j].raw).join(' / '),img:a.img,box:ls.length?{y0:Math.min(...ls.map(x=>x.bbox.y0)),y1:Math.max(...ls.map(x=>x.bbox.y1))}:null});
    pend=null}
   else if(a.name&&!isMeta(a))pend=i}
  return out;
@@ -638,7 +639,7 @@ function parseOcr(L,col,Wd){
 function canvasOf(bmp,w,h){const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(bmp,0,0,w,h);return c}
 /* prepares a photo for OCR: right size, grey, dark mode flipped to light, contrast stretched */
 async function prep(file){
- const bmp=await createImageBitmap(file);const sc=Math.min(3,Math.max(1,1800/bmp.width));const w=Math.round(bmp.width*sc),h=Math.round(bmp.height*sc);
+ const bmp=await createImageBitmap(file);const sc=Math.min(3,Math.max(1,2800/bmp.width));const w=Math.round(bmp.width*sc),h=Math.round(bmp.height*sc);
  const orig=canvasOf(bmp,w,h),c=canvasOf(bmp,w,h),x=c.getContext('2d'),d=x.getImageData(0,0,w,h),p=d.data;
  const hist=new Uint32Array(256);let sum=0;for(let i=0;i<p.length;i+=4){const g=(p[i]*.299+p[i+1]*.587+p[i+2]*.114)|0;p[i]=g;hist[g]++;sum+=g}
  const n=p.length/4,inv=sum/n<115;let lo=0,hi=255,acc=0;for(let g=0;g<256;g++){acc+=hist[g];if(acc>n*.02){lo=g;break}}acc=0;for(let g=255;g>=0;g--){acc+=hist[g];if(acc>n*.02){hi=g;break}}
@@ -653,8 +654,8 @@ function mergeLatin(A,B,img){
  const bwAll=(B.words||[]).filter(w=>w.bbox),bw=bwAll.filter(w=>/[A-Za-z]{2,}/.test(w.text)&&!/[א-ת]/.test(w.text)&&w.confidence>=55);
  return lines.map(l=>{if(!l.words||!l.bbox)return l;const used=new Set();
   const ws=l.words.map(w=>{let best=null,bi=0;for(const v of bw){const k=iou(w.bbox,v.bbox);if(k>bi){bi=k;best=v}}
-   if(best&&bi>.3&&(best.confidence>w.confidence+5||!/[א-ת0-9]/.test(w.text))){if(used.has(best))return null;used.add(best);return{text:best.text,bbox:w.bbox}}return{text:w.text,bbox:w.bbox}}).filter(Boolean);
-  for(const v of bw){if(used.has(v))continue;const yc=(v.bbox.y0+v.bbox.y1)/2;if(yc>l.bbox.y0&&yc<l.bbox.y1&&!l.words.some(w=>iou(w.bbox,v.bbox)>.05)){ws.push({text:v.text,bbox:v.bbox});used.add(v)}}
+   if(best&&bi>.3&&(best.confidence>w.confidence+5||!/[א-ת0-9]/.test(w.text))){if(used.has(best))return null;used.add(best);return{text:best.text,bbox:w.bbox,confidence:best.confidence}}return{text:w.text,bbox:w.bbox,confidence:w.confidence}}).filter(Boolean);
+  for(const v of bw){if(used.has(v))continue;const yc=(v.bbox.y0+v.bbox.y1)/2;if(yc>l.bbox.y0&&yc<l.bbox.y1&&!l.words.some(w=>iou(w.bbox,v.bbox)>.05)){ws.push({text:v.text,bbox:v.bbox,confidence:v.confidence});used.add(v)}}
   // the English pass reads digits better: keep its numbers on this line for the amount columns
   const nums=bwAll.filter(v=>/\d/.test(v.text)&&(v.bbox.y0+v.bbox.y1)/2>l.bbox.y0&&(v.bbox.y0+v.bbox.y1)/2<l.bbox.y1).map(v=>({text:v.text,bbox:v.bbox}));
   return{text:ws.map(w=>w.text).join(' '),bbox:l.bbox,words:ws,nums,img}})}
@@ -662,22 +663,25 @@ function mergeLatin(A,B,img){
 const fixNum=t=>t.replace(/[oO](?=\d)|(?<=\d)[oO]/g,'0').replace(/(?<=\d)[lI|]|[lI|](?=\d)/g,'1');
 function moneyOf(l){
  const src=[...(l.words||[]),...(l.nums||[])],out=[];
- for(const w of src){if(!w.bbox)continue;const t=fixNum(String(w.text));const m=t.match(/-?\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|-?\d+[.,]\d{2}(?!\d)/);if(!m)continue;
+ for(const w of src){if(!w.bbox)continue;const t=fixNum(String(w.text));const lost=t.match(/^\d{3,6}$/);if(lost){const xc=(w.bbox.x0+w.bbox.x1)/2;if(!out.some(o=>Math.abs(o.xc-xc)<25))out.push({v:+t/100,xc,cur:'',alt:1});continue}const m=t.match(/-?\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|-?\d+[.,]\d{2}(?!\d)/);if(!m)continue;
   const v=Math.abs(+m[0].replace(/,(?=\d{3})/g,'').replace(',','.'));if(!v||v>500000)continue;
   const xc=(w.bbox.x0+w.bbox.x1)/2,near=src.filter(o=>o.bbox&&Math.abs((o.bbox.x0+o.bbox.x1)/2-xc)<(w.bbox.x1-w.bbox.x0)*1.4+40).map(o=>o.text).join(' ');
   const cur=/[$€£]|usd|eur/i.test(t)?'f':/₪|ש"ח/.test(t)?'s':/[$€£]|usd|eur/i.test(near)?'f':'';
-  if(out.some(o=>Math.abs(o.xc-xc)<25&&o.v==v))continue;out.push({v,xc,cur})}
+  const dup=out.findIndex(o=>Math.abs(o.xc-xc)<25);if(dup>=0){if(out[dup].alt)out[dup]={v,xc,cur};continue}out.push({v,xc,cur})}
  return out}
 /* the table header ("סכום חיוב") says which column is the shekel amount that left the account */
 function chargeCol(lines,W){for(const l of lines){if(!l.words||!/סכום/.test(l.text))continue;const w=l.words.find(w=>/חיוב|לחיוב/.test(w.text));if(w&&w.bbox)return(w.bbox.x0+w.bbox.x1)/2/W}return null}
 /* exchange rate on the line (like 3.1120): foreign rows show amount, rate, fee and the shekel charge */
-function rateOf(l){for(const w of[...(l.nums||[]),...(l.words||[])]){const m=fixNum(String(w.text)).match(/^(\d{1,2}\.\d{3,4})$/);if(m){const r=+m[1];if(r>.2&&r<20)return r}}return null}
+function rateOf(l){for(const w of[...(l.nums||[]),...(l.words||[])]){const t=fixNum(String(w.text));const m=t.match(/^(\d{1,2}\.\d{3,4})$/);if(m){const r=+m[1];if(r>.2&&r<20)return r}if(/^\d{5}$/.test(t)&&+t/1e4>2&&+t/1e4<6)return +t/1e4}return null}
 function pickAmt(ms,col,W,rate){if(!ms.length)return null;
- const fx=ms.filter(m=>m.cur=='f'),nis=ms.filter(m=>m.cur!='f'),pool=nis.length?nis:ms;
- // a foreign amount × the rate should land on the shekel charge (a small fee may be added)
- if(fx.length&&rate){const exp=fx[0].v*rate,c=nis.filter(m=>m.v>=exp*.97&&m.v<=exp*1.2);if(c.length)return c.reduce((a,b)=>b.v>a.v?b:a).v;return Math.round(exp*100)/100}
- if(col!=null){const x=col*W;const best=pool.reduce((a,b)=>Math.abs(b.xc-x)<Math.abs(a.xc-x)?b:a);if(Math.abs(best.xc-x)<W*.14)return best.v}
- return pool.reduce((a,b)=>b.xc<a.xc?b:a).v}
+ const fx=ms.filter(m=>m.cur=='f'),all=ms.filter(m=>m.cur!='f'),nis=all.filter(m=>!m.alt).length?all.filter(m=>!m.alt):all,pool=nis.length?nis:ms.filter(m=>!m.alt).length?ms.filter(m=>!m.alt):ms;
+ // foreign row: the shekel charge = foreign amount × rate (+ fee). Check it, never invent it
+ if(fx.length&&rate&&nis.length){const F=fx[0].v;let best=null,be=9,fee=0;
+  for(const c of all)for(const f of[{v:0},...all.filter(x=>x!==c&&x.v<c.v*.2)]){const e=Math.abs((c.v-f.v)/rate-F)/F+(c.alt?.001:0);if(e<be){be=e;best=c;fee=f.v}}
+  if(best&&be<.03)return{v:best.v,calc:`${F} × ${rate}${fee?' + עמלה '+fee:''} = ${best.v}`,ok:1};
+  const big=nis.reduce((a,b)=>b.v>a.v?b:a);return{v:big.v,calc:`${F} במטבע חוץ × ${rate} לא יוצא ${big.v}, כדאי לבדוק`,ok:0}}
+ if(col!=null){const x=col*W;const best=pool.reduce((a,b)=>Math.abs(b.xc-x)<Math.abs(a.xc-x)?b:a);if(Math.abs(best.xc-x)<W*.14)return{v:best.v}}
+ return{v:pool.reduce((a,b)=>b.xc<a.xc?b:a).v}}
 
 const score=rows=>rows.reduce((s,r)=>s+1+(r.day?.5:0)+((r.bill.match(/\p{L}/gu)||[]).length>3?.3:0),0);
 function cropOf(orig,box){if(!box)return'';const pad=10,y0=Math.max(0,box.y0-pad),h=Math.min(orig.height-y0,box.y1-box.y0+pad*2);if(h<4)return'';const W=Math.min(760,orig.width),k=W/orig.width,c=document.createElement('canvas');c.width=W;c.height=Math.round(h*k);c.getContext('2d').drawImage(orig,0,y0,orig.width,h,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.78)}
@@ -736,7 +740,7 @@ function buildRow(p,ym){
  if(mp&&has(mp.cat))cat=mp.cat;else if(it&&has(it.cat))cat=it.cat;else if(near&&ns>=.55)cat=near.cat;else if(byName)cat=byName.id;else if(g&&has(S.gmap[g.n]))cat=S.gmap[g.n];else if(g){const ex=S.cats.filter(c=>g.h.some(h=>c.name.includes(h))).sort((x,y)=>sim(y.name,p.bill)-sim(x.name,p.bill))[0];if(ex)cat=ex.id;else{cat='__new';newCat=g.n}}
  const rec=mp?!!mp.rec:!!it;
  const st=mp?'known':it?'match':(weird(p.bill)&&!g)?'weird':'new';
- const r={id:uid(),on:true,date:p.day?p.day+(p.mo?'/'+p.mo:''):'',crop:p.crop||'',raw:p.raw||'',bill:p.bill,name:mp?.name||(it?it.name:''),a:p.a,day:p.day,cat,newCat,rec,item:it?it.id:'new',f:it?it.f:'m',deb:mp?.deb||it?.deb||(p.foreign?'now':'card'),st,sugRec:!it&&!mp&&g?.rec};
+ const r={id:uid(),on:true,calc:p.calc||'',calcOk:p.calcOk,date:p.day?p.day+(p.mo?'/'+p.mo:''):'',crop:p.crop||'',raw:p.raw||'',bill:p.bill,name:mp?.name||(it?it.name:''),a:p.a,day:p.day,cat,newCat,rec,item:it?it.id:'new',f:it?it.f:'m',deb:mp?.deb||it?.deb||(p.foreign?'now':'card'),st,sugRec:!it&&!mp&&g?.rec};
  r.g=st=='weird'?0:rec?1:2;r.gn=g?.n||'';r.auto=!mp&&!it;
  if(isDup(r,ym))r.on=false;return r;
 }
@@ -749,6 +753,7 @@ function catOpts(r){return `<option value="">ללא קטגוריה</option>${S.c
 function rowHTML(r,i){const dup=isDup(r,R.ym);const tag=dup?['dup','נראה שכבר נרשם בחודש הזה']:r.st=='weird'?['weird','שם לא ברור, מה זה?']:r.st=='known'?['known','מוכר מסריקה קודמת']:r.st=='match'?['match','זוהה: '+(S.items.find(x=>x.id==r.item)?.name||'')]:['new','חדש'];
  return`<div class="rv ${r.on?'':'skip'} ${r.st=='weird'?'weird':''}" data-r="${i}">
  <div class="rv1"><input type="checkbox" data-rf="on" ${r.on?'checked':''} aria-label="לכלול שורה"><div><span class="tag ${tag[0]}">${esc(tag[1])}</span><input type="text" data-rf="bill" value="${esc(r.bill)}" aria-label="השם בדף החיובים"></div><input type="number" step="0.01" inputmode="decimal" data-rf="a" value="${esc(r.a)}" aria-label="סכום" class="num"><input class="dayin" type="text" inputmode="numeric" data-rf="date" value="${esc(r.date)}" placeholder="תאריך" aria-label="תאריך"></div>
+ ${r.calc?`<div class="rawl" style="color:${r.calcOk?'var(--ok)':'var(--pink)'}">${r.calcOk?'✓ ':''}${esc(r.calc)}</div>`:''}
  ${r.crop?`<img class="crop" src="${r.crop}" alt="השורה מהתמונה">`:r.raw?`<div class="rawl">נקרא מהדף: ${esc(r.raw)}</div>`:''}
  <div class="rv2"><input type="text" data-rf="name" value="${esc(r.name)}" placeholder="${r.st=='weird'?'תן לזה שם שתזהה':'השם שלי: '+esc(clean(r.bill))}" aria-label="השם שלי"><div style="display:flex;gap:8px"><select data-rf="cat" aria-label="קטגוריה">${catOpts(r)}</select>${r.cat=='__new'?`<input type="text" data-rf="newCat" value="${esc(r.newCat)}" placeholder="שם הקטגוריה" aria-label="שם הקטגוריה החדשה">`:''}</div></div>
  <div class="rv3"><div class="mini" role="group" aria-label="סוג"><button type="button" data-sa="rec0" class="${r.rec?'':'on'}">חיוב רגיל</button><button type="button" data-sa="rec1" class="${r.rec?'on':''}">הוראת קבע</button></div>
