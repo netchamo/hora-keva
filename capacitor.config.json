@@ -1,0 +1,8 @@
+{
+  "appId": "com.netchamo.horakeva",
+  "appName": "הוראות קבע",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0a2540"
+  }
+}

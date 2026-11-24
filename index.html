@@ -463,6 +463,7 @@ function settingsDlg(){openDlg(`${head('הגדרות וגיבוי')}<div class="
  <div class="fl"><label for="stRange">כמה שנים אחורה להציג</label><select id="stRange">${[1,2,3,4,5,6,7].map(n=>`<option value="${n}" ${n==S.set.range?'selected':''}>${n==1?'שנה אחת':n+' שנים'}</option>`).join('')}</select></div>
  <div class="fl"><span>גיבוי</span><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-act="exp-dl">הורדת קובץ גיבוי</button><button class="btn" type="button" data-act="exp-copy">העתקת הגיבוי</button></div></div>
  <div class="fl"><label for="impT">שחזור מגיבוי</label><input type="file" id="impF" accept=".json,application/json" aria-label="קובץ גיבוי"><textarea id="impT" placeholder="או הדביקו כאן את טקסט הגיבוי"></textarea><button class="btn" type="button" data-act="imp">שחזור (מחליף את כל הנתונים)</button></div>
+ ${NATIVE?'':'<div class="fl"><span>אפליקציה לטלפון</span><a class="btn" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:inherit" href="https://github.com/netchamo/hora-keva/releases/latest/download/hora-keva.apk">הורדת האפליקציה לאנדרואיד</a><span class="note">הנתונים באפליקציה ובדפדפן נפרדים. מעבירים ביניהם עם קובץ גיבוי.</span></div>'}
  <p class="note">הנתונים נשמרים רק במכשיר ובדפדפן הזה, ושום דבר לא נשלח לשום מקום. כדי להעביר למכשיר אחר: מורידים גיבוי כאן ומשחזרים אותו שם. ${S.set.lastBackup?'גיבוי אחרון: '+new Date(S.set.lastBackup).toLocaleDateString('he-IL'):'עוד לא נעשה גיבוי.'}</p>
  </div><div class="df"><button class="btn pri" type="button" data-act="close">סגירה</button><span class="sp"></span><button class="btn dan" type="button" data-act="wipe">מחיקת כל הנתונים</button></div>`);
  $('#stRange').addEventListener('change',e=>{S.set.range=+e.target.value;commit()});
@@ -495,6 +496,7 @@ document.addEventListener('click',async e=>{const t=e.target.closest('[data-act]
  else if(a=='clear-sample'){const u=snap();S=empty();toast('הרשימה נוקתה',u);commit()}
  else if(a=='wipe'){const u=snap();S=empty();dlg.close();toast('כל הנתונים נמחקו',u);commit()}
  else if(a=='exp-copy'){try{await navigator.clipboard.writeText(JSON.stringify(S));S.set.lastBackup=Date.now();save();toast('הגיבוי הועתק')}catch(_){$('#impT').value=JSON.stringify(S);$('#impT').select();toast('סמנו והעתיקו מהתיבה')}}
+ else if(a=='exp-dl'&&NATIVE){try{const P=CAP.Plugins,name='hora-keva-'+new Date().toISOString().slice(0,10)+'.json';const r=await P.Filesystem.writeFile({path:name,data:JSON.stringify(S,null,1),directory:'CACHE',encoding:'utf8'});await P.Share.share({title:'גיבוי הוראות קבע',files:[r.uri],dialogTitle:'איפה לשמור את הגיבוי'});S.set.lastBackup=Date.now();save()}catch(err){if(!/cancel/i.test(String(err?.message)))toast('השמירה לא הושלמה')}}
  else if(a=='exp-dl'){const b=new Blob([JSON.stringify(S,null,1)],{type:'application/json'}),u=URL.createObjectURL(b),l=document.createElement('a');l.href=u;l.download='hora-keva-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(l);l.click();l.remove();setTimeout(()=>URL.revokeObjectURL(u),2000);S.set.lastBackup=Date.now();save();toast('קובץ הגיבוי ירד')}
  else if(a=='load-sample'){S=norm(sample());commit()}
  else if(a=='install'){if(deferred){deferred.prompt();deferred=null;$('#installBtn').hidden=true}}
@@ -515,7 +517,7 @@ $('#oForm').addEventListener('submit',e=>{e.preventDefault();const{y,m}=at(mk);c
 dlg.addEventListener('close',()=>{openId=null});
 window.addEventListener('hashchange',route);
 
-function norm(o){return{v:1,ts:o.ts||0,sample:!!o.sample,cats:o.cats||[],items:(o.items||[]).map(x=>({sel:true,act:true,paid:{},note:'',bill:'',m:0,spr:false,deb:'card',day:null,...x})),one:(o.one||[]).map(x=>({deb:'card',bill:'',...x})),notes:o.notes||{},map:o.map||{},set:{range:1,spread:false,...(o.set||{})}}}
+function norm(o){return{v:1,ts:o.ts||0,sample:!!o.sample,cats:o.cats||[],items:(o.items||[]).map(x=>({sel:true,act:true,paid:{},note:'',bill:'',m:0,spr:false,deb:'card',day:null,...x})),one:(o.one||[]).map(x=>({deb:'card',bill:'',...x})),notes:o.notes||{},map:o.map||{},gmap:o.gmap||{},set:{range:1,spread:false,...(o.set||{})}}}
 
 /* ---------- scan: statement photo or file, processed on this device ---------- */
 const TESS='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
@@ -613,12 +615,14 @@ function buildRow(p,ym){
  const nb=normB(p.bill),mp=S.map[nb];
  let it=mp?.item?S.items.find(i=>i.id==mp.item):null;
  if(!it&&mp?.rec===false)it=null;else if(!it){let best=null,bs=0;for(const x of S.items){const s=Math.max(sim(x.bill,p.bill),sim(x.name,p.bill)*.9)+(Math.abs(x.a-p.a)<.01?.1:0);if(s>bs){bs=s;best=x}}if(bs>=.6)it=best}
- const g=groupOf(p.bill);let cat='',newCat='';const byName=S.cats.filter(c=>normB(c.name).length>2&&normB(p.bill).includes(normB(c.name)))[0];
- if(mp&&S.cats.some(c=>c.id==mp.cat))cat=mp.cat;else if(it)cat=it.cat;else if(byName)cat=byName.id;else if(g){const ex=S.cats.filter(c=>g.h.some(h=>c.name.includes(h))).sort((x,y)=>sim(y.name,p.bill)-sim(x.name,p.bill))[0];if(ex)cat=ex.id;else{cat='__new';newCat=g.n}}
+ const g=groupOf(p.bill);let cat='',newCat='';const has=id=>id&&S.cats.some(c=>c.id==id);
+ const byName=S.cats.filter(c=>normB(c.name).length>2&&normB(p.bill).includes(normB(c.name)))[0];
+ let near=null,ns=0;if(!mp)for(const[k,v]of Object.entries(S.map)){if(!has(v.cat))continue;const sc=sim(k,nb);if(sc>ns){ns=sc;near=v}}
+ if(mp&&has(mp.cat))cat=mp.cat;else if(it&&has(it.cat))cat=it.cat;else if(near&&ns>=.55)cat=near.cat;else if(byName)cat=byName.id;else if(g&&has(S.gmap[g.n]))cat=S.gmap[g.n];else if(g){const ex=S.cats.filter(c=>g.h.some(h=>c.name.includes(h))).sort((x,y)=>sim(y.name,p.bill)-sim(x.name,p.bill))[0];if(ex)cat=ex.id;else{cat='__new';newCat=g.n}}
  const rec=mp?!!mp.rec:!!it;
  const st=mp?'known':it?'match':(weird(p.bill)&&!g)?'weird':'new';
  const r={id:uid(),on:true,bill:p.bill,name:mp?.name||(it?it.name:''),a:p.a,day:p.day,cat,newCat,rec,item:it?it.id:'new',f:it?it.f:'m',deb:mp?.deb||it?.deb||(p.foreign?'now':'card'),st,sugRec:!it&&!mp&&g?.rec};
- r.g=st=='weird'?0:rec?1:2;
+ r.g=st=='weird'?0:rec?1:2;r.gn=g?.n||'';r.auto=!mp&&!it;
  if(isDup(r,ym))r.on=false;return r;
 }
 function isDup(r,ym){if(r.rec&&r.item!='new'){const it=S.items.find(i=>i.id==r.item);return it?.paid[ym]!=null}return S.one.some(o=>o.ym==ym&&Math.abs(o.a-r.a)<.01&&normB(o.bill||o.name)==normB(r.bill))}
@@ -653,7 +657,7 @@ function keepScroll(fn){const b=$('#rvBody'),y=b?dlg.scrollTop:0;fn();dlg.scroll
 dlg.addEventListener('input',e=>{const f=e.target.dataset?.rf;if(!R||!f||e.target.type=='checkbox'||e.target.tagName=='SELECT')return;const r=R.rows[+e.target.closest('[data-r]').dataset.r];r[f]=e.target.type=='number'?(+e.target.value||(f=='day'?null:0)):e.target.value;
  if(f=='a'){const on=R.rows.filter(r=>r.on);const b=document.querySelector('[data-sa=ok]');if(b)b.textContent=`אישור ושמירה של ${on.length} שורות · ${fmt(on.reduce((s,r)=>s+(+r.a||0),0))}`}});
 dlg.addEventListener('change',e=>{const f=e.target.dataset?.rf;if(!R||!f)return;if(e.target.type!='checkbox'&&e.target.tagName!='SELECT')return;const r=R.rows[+e.target.closest('[data-r]').dataset.r];
- if(f=='on')r.on=e.target.checked;else if(f=='cat'){r.cat=e.target.value;if(r.cat=='__new'&&!r.newCat)r.newCat=''}else if(f=='item'){r.item=e.target.value;const it=S.items.find(x=>x.id==r.item);if(it){r.cat=it.cat;r.deb=it.deb||r.deb;if(!r.name)r.name=it.name}}else r[f]=e.target.value;
+ if(f=='on')r.on=e.target.checked;else if(f=='cat'){r.cat=e.target.value;r.auto=false;if(r.cat=='__new'&&!r.newCat)r.newCat='';if(r.gn&&r.cat!='__new')for(const o of R.rows)if(o!==r&&o.auto&&o.gn==r.gn){o.cat=r.cat;o.auto=false}}else if(f=='item'){r.item=e.target.value;const it=S.items.find(x=>x.id==r.item);if(it){r.cat=it.cat;r.deb=it.deb||r.deb;if(!r.name)r.name=it.name}}else r[f]=e.target.value;
  keepScroll(renderReview);if(f=='cat'&&r.cat=='__new')document.querySelector(`[data-r="${R.rows.indexOf(r)}"] [data-rf=newCat]`)?.focus()});
 dlg.addEventListener('click',e=>{const b=e.target.closest('[data-sa]');if(!b)return;const a=b.dataset.sa,ri=b.closest('[data-r]')?.dataset.r,r=ri!=null?R?.rows[+ri]:null;
  if(a=='manual'){review([],null);R.rows.push(buildRow({bill:'',a:0,day:null,mo:null,foreign:false},R.ym));R.rows.at(-1).st='new';R.rows.at(-1).g=2;R.rows.at(-1).on=true;renderReview()}
@@ -673,20 +677,24 @@ function applyReview(){
    else{if(!it.bill)it.bill=r.bill;if(r.day&&!it.day)it.day=r.day}
    it.paid[ym]=+r.a}
   else S.one.push({id:uid(),ym,name:nm,bill:r.bill,a:+r.a,day:r.day||null,cat,deb:r.deb});
+  if(r.gn&&cat)S.gmap[r.gn]=cat;
   if(r.bill)S.map[normB(r.bill)]={name:String(r.name||'').trim()||(it?it.name:''),cat,rec:!!r.rec,item:it?.id||null,deb:r.deb};
   n++}
  touch();dlg.close();mk=(y-CY)*12+(m-CM);toast(`נשמרו ${n} שורות ב${MF[m]}`,u);commit();location.hash='month';
 }
 
 /* ---------- boot ---------- */
-const empty=()=>({v:1,ts:0,sample:false,cats:[],items:[],one:[],notes:{},map:{},set:{range:1,spread:false}});
+const CAP=window.Capacitor,NATIVE=!!CAP?.isNativePlatform?.();
+const empty=()=>({v:1,ts:0,sample:false,cats:[],items:[],one:[],notes:{},map:{},gmap:{},set:{range:1,spread:false}});
 S=norm(loadLocal()||empty());pick=0;route();setStatus('נשמר במכשיר');
 try{navigator.storage?.persist?.()}catch(e){}
+if(NATIVE){document.documentElement.classList.add('native');const P=CAP.Plugins;try{P.StatusBar?.setBackgroundColor({color:'#0a2540'});P.StatusBar?.setStyle({style:'DARK'})}catch(e){}
+ try{P.App?.addListener('backButton',({canGoBack})=>{if(dlg.open)dlg.close();else if(location.hash&&location.hash!='#list')location.hash='list';else P.App.exitApp()})}catch(e){}}
 $('#installBtn').dataset.act='install';
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('#installBtn').hidden=false});
 window.addEventListener('appinstalled',()=>{$('#installBtn').hidden=true});
 window.addEventListener('storage',e=>{if(e.key===LS){S=norm(loadLocal()||empty());render()}});
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+if(!NATIVE&&'serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
 </script>
 </body>
