@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a2540">
-<meta name="hk-build" content="10">
+<meta name="hk-build" content="11">
 <script>
 /* Android app: if a newer build was downloaded earlier, run it instead of the bundled one */
 (function(){try{var C=window.Capacitor;if(!(C&&C.isNativePlatform&&C.isNativePlatform())||window.__hkLive)return;
@@ -32,6 +32,7 @@ if(code&&cb>own)window.__hkSwap=code}catch(e){}})();
 :root{color-scheme:light dark;--bg:light-dark(#ffffff,#0c1520);--ink:light-dark(#0f1b2a,#e8eef5);--mut:light-dark(#5a6777,#93a3b5);--line:light-dark(#e2e7ed,#213042);--card:light-dark(#f4f7fa,#121f2e);--acc:light-dark(#0a5fa8,#8fd3ff);--sea:#0a2540;--sky:#8fd3ff;--pink:#ff5c8a;--spr:light-dark(#f3effb,#1d1830);--sprk:light-dark(#6b4fa8,#b9a3f0);--ok:light-dark(#0f7b55,#5fd3a3)}
 :root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
 *{box-sizing:border-box;min-width:0}
+[hidden]{display:none!important}
 html,body{margin:0}
 body{background:var(--bg);color:var(--ink);font:16px/1.5 Heebo,"Segoe UI",Arial,sans-serif;overflow-x:clip}
 button,input,select,textarea{font:inherit;color:inherit}
@@ -192,6 +193,17 @@ dialog.wide{width:min(980px,calc(100vw - 16px))}
 .thumbs{display:flex;gap:8px;overflow-x:auto}.thumbs img{height:220px;border-radius:8px;border:1px solid var(--line)}
 @media(max-width:600px){.rv1{grid-template-columns:30px minmax(0,1fr) 92px}.rv1 .dayin{grid-column:2}.rv2{grid-template-columns:minmax(0,1fr)}}
 .oform .wide{grid-column:1/-1}
+.chsec{margin-bottom:26px}
+.chsec>h3{font:700 22px Rubik,sans-serif;margin:0 0 6px;display:flex;justify-content:space-between;gap:10px;border-bottom:2px solid var(--ink);padding-bottom:6px}
+.chg{margin-bottom:14px}
+.chg h4{margin:10px 0 2px;font:500 15px Rubik,sans-serif;color:var(--mut);display:flex;justify-content:space-between}
+.chg h4 em{font-style:normal;font-size:13px;background:var(--card);border-radius:999px;padding:0 8px;margin-inline-start:4px}
+.chr{display:grid;grid-template-columns:40px minmax(0,1fr) 44px auto;gap:8px;align-items:center;width:100%;min-height:54px;border:0;border-top:1px solid var(--line);background:none;text-align:start;cursor:pointer;padding:4px 2px}
+.chr:hover{background:var(--card)}
+.chr .day{font:500 15px Rubik,sans-serif;color:var(--mut);text-align:center}
+.chr .reg{height:6px;background:var(--card);border-radius:3px;overflow:hidden}
+.chr .reg i{display:block;height:100%;background:var(--acc)}
+.chtool select{min-height:44px}
 .od .day{font:500 15px Rubik,sans-serif;color:var(--mut);text-align:center}
 textarea{width:100%;min-height:80px;resize:vertical}
 dialog{border:0;border-radius:18px;padding:0;width:min(560px,calc(100vw - 24px));max-height:calc(100dvh - 24px);background:var(--bg);color:var(--ink);box-shadow:0 20px 50px rgba(0,0,0,.3)}
@@ -259,7 +271,7 @@ table{font-size:13px}th,td{padding:6px 4px}
   </div>
  </div>
 </header>
-<nav><div class="wrap"><a href="#list" data-v="list">הוראות קבע</a><a href="#month" data-v="month">החודש</a><a href="#summary" data-v="summary">סיכומים</a></div></nav>
+<nav><div class="wrap"><a href="#list" data-v="list">הוראות קבע</a><a href="#charges" data-v="charges">חיובים</a><a href="#month" data-v="month">החודש</a><a href="#summary" data-v="summary">סיכומים</a></div></nav>
 <main class="wrap">
  <div class="banner" id="sampleBanner" hidden><span>אלה נתוני דוגמה כדי לראות איך זה עובד. הם נשמרים רק במכשיר הזה.</span><button class="btn" type="button" data-act="clear-sample">להתחיל רשימה נקייה</button></div>
 
@@ -290,6 +302,19 @@ table{font-size:13px}th,td{padding:6px 4px}
   </div>
  </section>
 
+ <section id="v-charges" hidden>
+  <div class="mchips" id="chMonths"></div>
+  <div class="stats" id="chStats"></div>
+  <div class="tool chtool">
+   <input type="search" id="chQ" placeholder="חיפוש לפי שם, שם בדף או קטגוריה" aria-label="חיפוש חיובים" style="flex:1 1 200px">
+   <select id="chF" aria-label="סינון"><option value="all">הכול</option><option value="rec">רק הוראות קבע</option><option value="one">רק חד פעמי</option><option value="credit">רק זיכויים</option><option value="now">ירד מיד מהחשבון</option><option value="card">בחיוב הכרטיס</option></select>
+   <select id="chS" aria-label="מיון"><option value="amt-desc">סכום, מהגבוה</option><option value="amt-asc">סכום, מהנמוך</option><option value="date-desc">תאריך, מהמאוחר</option><option value="date-asc">תאריך, מהמוקדם</option><option value="reg-desc">הכי קבועים קודם</option></select>
+   <label class="sw" style="min-height:44px"><input type="checkbox" id="chG" checked>לפי קטגוריות</label>
+  </div>
+  <p class="note" style="margin:-6px 0 12px">הפס הקטן ליד כל חיוב מראה בכמה מתוך 12 החודשים האחרונים הוא הופיע. לחיצה על חיוב פותחת עריכה.</p>
+  <div id="chList"></div>
+ </section>
+
  <section id="v-summary" hidden>
   <div class="grid2">
    <div class="panel">
@@ -317,7 +342,7 @@ const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,10);
 const NF0=new Intl.NumberFormat('he-IL',{maximumFractionDigits:0}),NF2=new Intl.NumberFormat('he-IL',{minimumFractionDigits:2,maximumFractionDigits:2});
-const fmt=n=>{n=+n||0;const f=(Math.abs(n-Math.round(n))>.004?NF2:NF0).format(Math.abs(n));return(n<0?'−₪':'₪')+f};
+const fmt=n=>{n=+n||0;const f=(Math.abs(n-Math.round(n))>.004?NF2:NF0).format(Math.abs(n));return n<0?'\u2066−₪'+f+'\u2069':'₪'+f};
 const now=new Date(),CY=now.getFullYear(),CM=now.getMonth();
 const at=k=>{const d=new Date(CY,CM+k,1);return{y:d.getFullYear(),m:d.getMonth()}};
 const key=(y,m)=>y+'-'+String(m+1).padStart(2,'0');
@@ -398,7 +423,7 @@ function renderMonth(){
  $('#mRec').innerHTML=rec.length?rec.map(x=>{const p=x.paid[k]!=null;return`<div class="li"><input type="checkbox" data-act="mpaid" data-id="${x.id}" ${p?'checked':''} aria-label="ירד: ${esc(x.name)}"><div class="nm"><b>${esc(x.name)}</b><small>${esc(x.bill||'')} · ${esc(catName(x.cat))}${x.day?' · ב־'+esc(x.day)+' לחודש':''}${x.deb=='now'?' · ירד מיד':''}</small></div>${p?`<input class="ain num" type="number" step="0.01" data-act="mamt" data-id="${x.id}" value="${+x.paid[k]}" aria-label="סכום בפועל">`:`<span class="amt" style="color:var(--mut)">${fmt(x.a)}</span>`}</div>`}).join(''):'<div class="empty">אין חיובים קבועים בחודש הזה</div>';
  const os_=S.one.filter(o=>o.ym==k).sort((a,b)=>(a.day||0)-(b.day||0));
  const byc={};for(const o of os_)(byc[catName(o.cat)]??=[]).push(o);
- $('#mOne').innerHTML=os_.length?Object.entries(byc).sort((a,b)=>b[1].reduce((s,o)=>s+ +o.a,0)-a[1].reduce((s,o)=>s+ +o.a,0)).map(([cn,list])=>`<div class="cg"><h4><span>${esc(cn)}</span><span class="num">${fmt(list.reduce((s,o)=>s+ +o.a,0))}</span></h4>${list.map(o=>`<div class="od"><span class="day">${o.day?esc(o.day):'—'}</span><div class="nm"><b>${esc(o.name)}</b><small>${o.bill&&o.bill!=o.name?esc(o.bill)+' · ':''}${o.a<0?'זיכוי · ':''}${o.deb=='now'?'ירד מיד מהחשבון':'בחיוב הכרטיס'}</small></div><span class="amt ${o.a<0?'cr':''}">${fmt(o.a)}</span><button type="button" class="ic" data-act="one-del" data-id="${o.id}" aria-label="מחיקה">${ico.x}</button></div>`).join('')}</div>`).join(''):'<div class="empty">אין חיובים בחודש הזה</div>';
+ $('#mOne').innerHTML=os_.length?Object.entries(byc).sort((a,b)=>b[1].reduce((s,o)=>s+ +o.a,0)-a[1].reduce((s,o)=>s+ +o.a,0)).map(([cn,list])=>`<div class="cg"><h4><span>${esc(cn)}</span><span class="num">${fmt(list.reduce((s,o)=>s+ +o.a,0))}</span></h4>${list.map(o=>`<div class="od"><span class="day">${o.day?esc(o.day):'—'}</span><div class="nm" data-act="one-edit" data-id="${o.id}" style="cursor:pointer"><b>${esc(o.name)}</b><small>${o.bill&&o.bill!=o.name?esc(o.bill)+' · ':''}${o.a<0?'זיכוי · ':''}${o.deb=='now'?'ירד מיד מהחשבון':'בחיוב הכרטיס'}</small></div><span class="amt ${o.a<0?'cr':''}">${fmt(o.a)}</span><button type="button" class="ic" data-act="one-del" data-id="${o.id}" aria-label="מחיקה">${ico.x}</button></div>`).join('')}</div>`).join(''):'<div class="empty">אין חיובים בחודש הזה</div>';
  const by={};for(const x of S.items)if(x.paid[k]!=null)by[catName(x.cat)]=(by[catName(x.cat)]||0)+ +x.paid[k];for(const o of os_)by[catName(o.cat)]=(by[catName(o.cat)]||0)+ +o.a;
  const arr=Object.entries(by).sort((a,b)=>b[1]-a[1]),mx=Math.max(1,...arr.map(a=>a[1]));
  $('#mBars').innerHTML=arr.length?arr.map(([n,v])=>`<div class="hb"><span>${esc(n)}</span><div class="tr"><i style="width:${v/mx*100}%"></i></div><span class="num">${fmt(v)}</span></div>`).join(''):'<p class="note">עוד לא סומנו הוצאות</p>';
@@ -428,11 +453,75 @@ function renderSum(){
 
 function render(){
  $('#sampleBanner').hidden=!S.sample;renderHead();
- for(const v of['list','month','summary']){$('#v-'+v).hidden=v!=view;document.querySelector(`nav a[data-v=${v}]`).classList.toggle('on',v==view)}
- if(view=='list')renderList();if(view=='month')renderMonth();if(view=='summary')renderSum();
+ for(const v of['list','charges','month','summary']){$('#v-'+v).hidden=v!=view;document.querySelector(`nav a[data-v=${v}]`).classList.toggle('on',v==view)}
+ if(view=='list')renderList();if(view=='month')renderMonth();if(view=='summary')renderSum();if(view=='charges')renderCharges();
  if(openId&&$('#dlg').open&&$('#hgrid'))renderHist();
 }
-function route(){const h=location.hash.slice(1);view=['list','month','summary'].includes(h)?h:'list';render()}
+function route(){const h=location.hash.slice(1);view=['list','charges','month','summary'].includes(h)?h:'list';render()}
+
+/* ---------- charges tab: everything that came off the card in a month ---------- */
+let chK=null,chQ='',chF='all',chS='amt-desc',chG=true;
+const okey=o=>normB(o.bill||o.name);
+function monthsWithData(){const set=new Set();for(const o of S.one)set.add(o.ym);for(const x of S.items)for(const k in x.paid)set.add(k);return[...set].sort().reverse()}
+function regOf(e,k){const{y,m}=parse(k);let n=0;for(let i=0;i<12;i++){const d=new Date(y,m-i,1),kk=key(d.getFullYear(),d.getMonth());
+ if(e.kind=='rec'){if(S.items.find(x=>x.id==e.id)?.paid[kk]!=null)n++}else if(S.one.some(o=>o.ym==kk&&okey(o)==e.k))n++}return n}
+function chargesOf(k){const out=[];
+ for(const x of S.items)if(x.paid[k]!=null)out.push({kind:'rec',id:x.id,name:x.name,bill:x.bill,cat:x.cat,a:+x.paid[k],day:x.day,deb:x.deb||'card',k:normB(x.bill||x.name)});
+ for(const o of S.one)if(o.ym==k)out.push({kind:'one',id:o.id,name:o.name,bill:o.bill,cat:o.cat,a:+o.a,day:o.day,deb:o.deb||'card',k:okey(o)});
+ for(const e of out)e.reg=regOf(e,k);return out}
+const SORTS={'amt-desc':(a,b)=>b.a-a.a,'amt-asc':(a,b)=>a.a-b.a,'date-desc':(a,b)=>(b.day||0)-(a.day||0),'date-asc':(a,b)=>(a.day||99)-(b.day||99),'reg-desc':(a,b)=>b.reg-a.reg||b.a-a.a};
+function chRow(e){return`<button type="button" class="chr" data-act="ch-open" data-kind="${e.kind}" data-id="${e.id}"><span class="day">${e.day?esc(e.day):'—'}</span><span class="nm"><b>${esc(e.name)}</b><small>${e.bill&&e.bill!=e.name?esc(e.bill)+' · ':''}${e.kind=='rec'?'הוראת קבע':'חד פעמי'}${e.deb=='now'?' · ירד מיד':''}${e.a<0?' · זיכוי':''}</small></span><span class="reg" title="הופיע ב־${e.reg} מתוך 12 החודשים האחרונים"><i style="width:${e.reg/12*100}%"></i></span><span class="amt ${e.a<0?'cr':''}">${fmt(e.a)}</span></button>`}
+function chGroups(list){const by={};for(const e of list)(by[catName(e.cat)]??=[]).push(e);
+ return Object.entries(by).map(([n,l])=>[n,l.sort(SORTS[chS]),l.reduce((s,e)=>s+e.a,0)]).sort((a,b)=>b[2]-a[2]).map(([n,l,t])=>`<div class="chg"><h4><span>${esc(n)} <em>${l.length}</em></span><span class="num">${fmt(t)}</span></h4>${l.map(chRow).join('')}</div>`).join('')}
+function renderCharges(){
+ const ms=monthsWithData();if(!chK||!ms.includes(chK))chK=ms[0]||key(CY,CM);
+ $('#chMonths').innerHTML=(ms.length?ms:[chK]).slice(0,24).map(k=>{const p=parse(k);return`<button type="button" class="${k==chK?'on':''}" data-act="ch-k" data-k="${k}">${MN[p.m]} ${String(p.y).slice(2)}</button>`}).join('');
+ let all=chargesOf(chK);const q=chQ.trim().toLowerCase();
+ const list=all.filter(e=>(!q||(e.name+' '+e.bill+' '+catName(e.cat)).toLowerCase().includes(q))&&(chF=='all'||(chF=='rec'&&e.kind=='rec')||(chF=='one'&&e.kind=='one')||(chF=='credit'&&e.a<0)||(chF=='now'&&e.deb=='now')||(chF=='card'&&e.deb!='now')));
+ const sum=f=>all.filter(f).reduce((s,e)=>s+e.a,0);
+ $('#chStats').innerHTML=`<div class="stat"><span>סה״כ ${MF[parse(chK).m]}</span><b>${fmt(sum(()=>1))}</b></div><div class="stat"><span>הוראות קבע</span><b>${fmt(sum(e=>e.kind=='rec'))}</b></div><div class="stat"><span>חד פעמי</span><b>${fmt(sum(e=>e.kind=='one'&&e.a>0))}</b></div><div class="stat"><span>זיכויים</span><b class="cr-t">${fmt(sum(e=>e.a<0))}</b></div><div class="stat"><span>ירד מיד מהחשבון</span><b>${fmt(sum(e=>e.deb=='now'))}</b></div>`;
+ let html='';
+ if(!list.length)html=`<div class="empty">${all.length?'אין חיובים שמתאימים לסינון':'אין עדיין חיובים בחודש הזה. סורקים דף חיובים או מוסיפים ידנית במסך החודש.'}</div>`;
+ else if(!chG)html=`<div class="chg">${list.sort(SORTS[chS]).map(chRow).join('')}</div>`;
+ else{const rec=list.filter(e=>e.kind=='rec'),one=list.filter(e=>e.kind=='one');
+  if(rec.length)html+=`<div class="chsec"><h3>הוראות קבע <span class="num">${fmt(rec.reduce((s,e)=>s+e.a,0))}</span></h3>${chGroups(rec)}</div>`;
+  if(one.length)html+=`<div class="chsec"><h3>שאר החיובים <span class="num">${fmt(one.reduce((s,e)=>s+e.a,0))}</span></h3>${chGroups(one)}</div>`}
+ $('#chList').innerHTML=html;
+}
+/* edit a single charge: fix anything, or turn it into a standing order */
+function oneDlg(o){const p=parse(o.ym);const mOpts=[];for(let i=1;i>=-84;i--){const d=at(i),k=key(d.y,d.m);mOpts.push(`<option value="${k}" ${k==o.ym?'selected':''}>${MF[d.m]} ${d.y}</option>`)}
+ openDlg(`<form id="fOne">${head('עריכת חיוב',esc(o.bill||''))}<div class="db">
+ <div class="fl"><label for="eName">השם שלי</label><input type="text" id="eName" value="${esc(o.name)}" required></div>
+ <div class="fl"><label for="eBill">השם בדף החיובים</label><input type="text" id="eBill" value="${esc(o.bill||'')}"></div>
+ <div class="two"><div class="fl"><label for="eAmt">סכום</label><input type="number" id="eAmt" step="0.01" min="0" inputmode="decimal" value="${Math.abs(o.a)}"></div><div class="fl"><span>סוג</span><div class="seg"><label><input type="radio" name="eCr" value="0" ${o.a<0?'':'checked'}><span>חיוב</span></label><label><input type="radio" name="eCr" value="1" ${o.a<0?'checked':''}><span>זיכוי</span></label></div></div></div>
+ <div class="two"><div class="fl"><label for="eYm">חודש</label><select id="eYm">${mOpts.join('')}</select></div><div class="fl"><label for="eDay">יום</label><input type="number" id="eDay" min="1" max="31" value="${esc(o.day||'')}"></div></div>
+ <div class="two"><div class="fl"><label for="eCat">קטגוריה</label><select id="eCat"><option value="">ללא קטגוריה</option>${S.cats.map(c=>`<option value="${c.id}" ${c.id==o.cat?'selected':''}>${esc(c.name)}</option>`).join('')}<option value="__new">+ קטגוריה חדשה…</option></select></div><div class="fl"><label for="eDeb">איך ירד מהחשבון</label><select id="eDeb"><option value="card" ${o.deb!='now'?'selected':''}>בחיוב הכרטיס בסוף החודש</option><option value="now" ${o.deb=='now'?'selected':''}>ירד מיד (חו״ל או מיידי)</option></select></div></div>
+ <div class="fl" id="eNewW" hidden><label for="eNew">שם הקטגוריה החדשה</label><input type="text" id="eNew"></div>
+ <div class="fl"><span>זה בעצם</span><div class="seg"><label><input type="radio" name="eRec" value="0" checked><span>חיוב חד פעמי</span></label><label><input type="radio" name="eRec" value="1"><span>הוראת קבע</span></label></div></div>
+ <div id="eRecW" hidden><div class="two"><div class="fl"><label for="eItem">איזו הוראת קבע</label><select id="eItem"><option value="new">הוראת קבע חדשה</option>${S.items.map(x=>`<option value="${x.id}" ${sim(x.bill,o.bill||o.name)>=.6?'selected':''}>${esc(x.name)}</option>`).join('')}</select></div><div class="fl" id="eFW"><label for="eF">תדירות</label><select id="eF">${Object.entries(FR).map(([k,v])=>`<option value="${k}">${v}</option>`).join('')}</select></div></div><p class="note">החיוב יירשם כתשלום של ההוראה ב${MF[p.m]}, וסריקות הבאות יזהו אותו לבד כהוראת קבע.</p></div>
+ <label class="sw"><input type="checkbox" id="eMem" checked>לזכור את השינויים לסריקות הבאות של בית העסק הזה</label>
+ </div><div class="df"><button class="btn pri" type="submit">שמירה</button><button class="btn" type="button" data-act="close">ביטול</button><span class="sp"></span><button class="btn dan" type="button" data-act="one-del" data-id="${o.id}">מחיקה</button></div></form>`);
+ const sync=()=>{const rec=document.querySelector('[name=eRec]:checked').value=='1';$('#eRecW').hidden=!rec;$('#eFW').hidden=$('#eItem').value!='new';$('#eNewW').hidden=$('#eCat').value!='__new'};sync();
+ $('#fOne').addEventListener('change',sync);
+ $('#fOne').addEventListener('submit',e=>{e.preventDefault();const u=snap();
+  let cat=$('#eCat').value;if(cat=='__new')cat=$('#eNew').value.trim()?ensureCat($('#eNew').value):'';
+  const cr=document.querySelector('[name=eCr]:checked').value=='1',a=(cr?-1:1)*Math.abs(+$('#eAmt').value||0),ym=$('#eYm').value,day=+$('#eDay').value||null,deb=$('#eDeb').value,name=$('#eName').value.trim(),bill=$('#eBill').value.trim();
+  const rec=document.querySelector('[name=eRec]:checked').value=='1';let it=null;
+  if(rec){it=$('#eItem').value!='new'?S.items.find(x=>x.id==$('#eItem').value):null;
+   if(!it){it={id:uid(),name,bill,cat,f:$('#eF').value,a:Math.abs(a),m:parse(ym).m,spr:false,act:true,sel:true,note:'',paid:{},deb,day};S.items.push(it)}else{if(!it.bill)it.bill=bill;it.deb=deb;if(day&&!it.day)it.day=day}
+   it.paid[ym]=a;S.one=S.one.filter(x=>x.id!=o.id)}
+  else Object.assign(o,{name,bill,a,ym,day,cat,deb});
+  if($('#eMem').checked&&bill)S.map[normB(bill)]={name,cat:rec?it.cat:cat,rec,item:it?.id||null,deb};
+  dlg.close();toast(rec?'הועבר להוראות הקבע':'נשמר',u);commit()});
+}
+/* a standing-order payment in a given month */
+function paidDlg(x,k){const p=parse(k);openDlg(`${head(esc(x.name),'תשלום של '+MF[p.m]+' '+p.y)}<div class="db"><div class="fl"><label for="pAmt">הסכום שירד</label><input type="number" id="pAmt" step="0.01" value="${+x.paid[k]}"></div><p class="note">${esc(x.bill||'')} · ${FR[x.f]} · ${x.deb=='now'?'ירד מיד מהחשבון':'בחיוב הכרטיס'}</p></div>
+ <div class="df"><button class="btn pri" type="button" data-sa3="p-save">שמירה</button><button class="btn" type="button" data-act="edit" data-id="${x.id}">עריכת ההוראה</button><span class="sp"></span><button class="btn" type="button" data-sa3="p-one">זה בעצם חיוב חד פעמי</button><button class="btn dan" type="button" data-sa3="p-del">הסרה מהחודש</button></div>`);
+ dlg.dataset.pid=x.id;dlg.dataset.pk=k}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-sa3]');if(!b)return;const x=S.items.find(i=>i.id==dlg.dataset.pid),k=dlg.dataset.pk;if(!x)return;const u=snap();
+ if(b.dataset.sa3=='p-save'){x.paid[k]=+$('#pAmt').value||0;dlg.close();toast('נשמר',u);commit()}
+ else if(b.dataset.sa3=='p-del'){delete x.paid[k];dlg.close();toast('הוסר מהחודש',u);commit()}
+ else if(b.dataset.sa3=='p-one'){const o={id:uid(),ym:k,name:x.name,bill:x.bill,a:+x.paid[k],day:x.day,cat:x.cat,deb:x.deb||'card'};delete x.paid[k];S.one.push(o);if(x.bill)S.map[normB(x.bill)]={name:x.name,cat:x.cat,rec:false,item:null,deb:o.deb};commit();oneDlg(o);toast('הועבר לחיובים החד פעמיים',u)}});
 
 /* ---------- dialogs ---------- */
 const dlg=$('#dlg');
@@ -503,7 +592,10 @@ document.addEventListener('click',async e=>{const t=e.target.closest('[data-act]
  else if(a=='h-all'){const it=S.items.find(i=>i.id==openId);for(let k=-11;k<=0;k++){const p=at(k),kk=key(p.y,p.m);if(due(it,p.y,p.m)&&it.paid[kk]==null)it.paid[kk]=+$('#hAmt').value||it.a}touch();commit()}
  else if(a=='mnav'){mk=Math.max(-12*7,Math.min(12,mk+ +t.dataset.d));renderMonth()}
  else if(a=='sk'){sk=+t.dataset.k;renderSum()}
- else if(a=='one-del'){const u=snap();S.one=S.one.filter(o=>o.id!=id);toast('נמחק',u);commit()}
+ else if(a=='one-del'){const u=snap();S.one=S.one.filter(o=>o.id!=id);if(dlg.open)dlg.close();toast('נמחק',u);commit()}
+ else if(a=='one-edit'){const o=S.one.find(o=>o.id==id);if(o)oneDlg(o)}
+ else if(a=='ch-k'){chK=t.dataset.k;renderCharges()}
+ else if(a=='ch-open'){if(t.dataset.kind=='one'){const o=S.one.find(o=>o.id==id);if(o)oneDlg(o)}else if(x)paidDlg(x,chK)}
  else if(a=='settings')settingsDlg();
  else if(a=='scan')scanDlg();
  else if(a=='clear-sample'){const u=snap();S=empty();toast('הרשימה נוקתה',u);commit()}
@@ -522,6 +614,10 @@ document.addEventListener('change',e=>{const t=e.target,a=t.dataset?.act;if(!a)r
  else if(a=='mamt'){x.paid[k]=+t.value||0;commit()}
 });
 $('#q').addEventListener('input',renderList);
+$('#chQ').addEventListener('input',e=>{chQ=e.target.value;renderCharges()});
+$('#chF').addEventListener('change',e=>{chF=e.target.value;renderCharges()});
+$('#chS').addEventListener('change',e=>{chS=e.target.value;renderCharges()});
+$('#chG').addEventListener('change',e=>{chG=e.target.checked;renderCharges()});
 $('#sRange').addEventListener('change',e=>{S.set.range=+e.target.value;commit()});
 $('#mNote').addEventListener('input',e=>{const{y,m}=at(mk),k=key(y,m);if(e.target.value)S.notes[k]=e.target.value;else delete S.notes[k];save()});
 $('#oForm').addEventListener('submit',e=>{e.preventDefault();const{y,m}=at(mk);const day=+$('#oDay').value||null;
