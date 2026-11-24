@@ -43,6 +43,9 @@ jobs:
           rm -rf $RES/mipmap-anydpi-v26
           rm -f $RES/mipmap-*/ic_launcher_foreground.png
           cp -r android-build/res/. $RES/
+          JAVA=android/app/src/main/java/com/netchamo/horakeva
+          cp android-build/java/*.java $JAVA/
+          grep -q REQUEST_INSTALL_PACKAGES android/app/src/main/AndroidManifest.xml || sed -i 's#</manifest>#    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n</manifest>#' android/app/src/main/AndroidManifest.xml
           sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
           mkdir -p ~/.android
           cp android-build/debug.keystore ~/.android/debug.keystore

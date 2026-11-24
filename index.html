@@ -232,7 +232,7 @@ table{font-size:13px}th,td{padding:6px 4px}
  <div class="wrap">
   <div class="top">
    <h1>הוראות קבע ומנויים</h1>
-   <div class="status"><span id="saveState">טוען…</span><button type="button" id="installBtn" hidden>התקנה</button><button type="button" data-act="settings" aria-label="הגדרות וגיבוי">הגדרות וגיבוי</button></div>
+   <div class="status"><span id="saveState">טוען…</span><button type="button" id="installBtn" hidden>התקנה</button><button type="button" id="updBtn" data-sa2="upd-open" hidden style="background:var(--pink);border-color:var(--pink)">עדכון זמין</button><button type="button" data-act="settings" aria-label="הגדרות וגיבוי">הגדרות וגיבוי</button></div>
   </div>
   <div class="hero">
    <div class="kpi">
@@ -465,7 +465,7 @@ function settingsDlg(){openDlg(`${head('הגדרות וגיבוי')}<div class="
  <div class="fl"><label for="stRange">כמה שנים אחורה להציג</label><select id="stRange">${[1,2,3,4,5,6,7].map(n=>`<option value="${n}" ${n==S.set.range?'selected':''}>${n==1?'שנה אחת':n+' שנים'}</option>`).join('')}</select></div>
  <div class="fl"><span>גיבוי</span><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-act="exp-dl">הורדת קובץ גיבוי</button><button class="btn" type="button" data-act="exp-copy">העתקת הגיבוי</button></div></div>
  <div class="fl"><label for="impT">שחזור מגיבוי</label><input type="file" id="impF" accept=".json,application/json" aria-label="קובץ גיבוי"><textarea id="impT" placeholder="או הדביקו כאן את טקסט הגיבוי"></textarea><button class="btn" type="button" data-act="imp">שחזור (מחליף את כל הנתונים)</button></div>
- ${NATIVE?'':'<div class="fl"><span>אפליקציה לטלפון</span><a class="btn" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:inherit" href="https://github.com/netchamo/hora-keva/releases/latest/download/hora-keva.apk">הורדת האפליקציה לאנדרואיד</a><span class="note">הנתונים באפליקציה ובדפדפן נפרדים. מעבירים ביניהם עם קובץ גיבוי.</span></div>'}
+ ${NATIVE?`<div class="fl"><span>גרסה 1.${appVer}</span><button class="btn" type="button" data-sa2="upd-open">בדיקת עדכונים</button></div>`:'<div class="fl"><span>אפליקציה לטלפון</span><a class="btn" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:inherit" href="https://github.com/netchamo/hora-keva/releases/latest/download/hora-keva.apk">הורדת האפליקציה לאנדרואיד</a><span class="note">הנתונים באפליקציה ובדפדפן נפרדים. מעבירים ביניהם עם קובץ גיבוי.</span></div>'}
  <p class="note">הנתונים נשמרים רק במכשיר ובדפדפן הזה, ושום דבר לא נשלח לשום מקום. כדי להעביר למכשיר אחר: מורידים גיבוי כאן ומשחזרים אותו שם. ${S.set.lastBackup?'גיבוי אחרון: '+new Date(S.set.lastBackup).toLocaleDateString('he-IL'):'עוד לא נעשה גיבוי.'}</p>
  </div><div class="df"><button class="btn pri" type="button" data-act="close">סגירה</button><span class="sp"></span><button class="btn dan" type="button" data-act="wipe">מחיקת כל הנתונים</button></div>`);
  $('#stRange').addEventListener('change',e=>{S.set.range=+e.target.value;commit()});
@@ -547,7 +547,7 @@ function groupOf(b){const n=' '+normB(b)+' ',toks=n.trim().split(' ');for(const 
  for(const g of GROUPS)for(const k of g.k){const kk=normB(k);if(kk.length<5||kk.includes(' '))continue;if(toks.some(t=>t.length>=4&&lr(t,kk)>=.8))return g}return null}
 const AMT=/-?\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|-?\d+\.\d{1,2}|-?\d+/g;
 const DATE=/(\d{1,2})[\/.\-](\d{1,2})(?:[\/.\-](\d{2,4}))?/;
-const SKIP=/סה"?כ|סה״כ|סך הכל|סך הכול|יתרה|מסגרת|לתשלום|total|balance|תאריך עסקה|שם בית|סכום עסקה|סכום חיוב|עמוד \d|ריבית|מספר כרטיס/i;
+const SKIP=/סה"?כ|סה.{0,3}כ חיוב|לתאריך|סה״כ|סך הכל|סך הכול|יתרה|מסגרת|לתשלום|total|balance|תאריך עסקה|שם בית|סכום עסקה|סכום חיוב|עמוד \d|ריבית|מספר כרטיס/i;
 function parseLine(line){
  let t=String(line).replace(/[‎‏‪-‮]/g,'').replace(/[|_~\[\]{}]/g,' ').trim();
  if(t.length<4||SKIP.test(t))return null;
@@ -622,6 +622,7 @@ function parseOcr(L){
    let day=a.day,mo=a.mo;
    if(day==null)for(const j of[i+1,i-1,i+2,i-2]){const b=A[j];if(b&&b.amt==null&&b.day!=null&&!b.usedDate){day=b.day;mo=b.mo;b.usedDate=1;src.push(j);break}}
    const ls=src.map(j=>A[j]).filter(x=>x.bbox&&x.img===a.img);
+   const nx=A[i+1],n2=A[i+2];if(nx&&!nx.skip&&!nx.used&&nx.amt==null&&nx.day==null&&nx.name&&nx.name.split(' ').length<=3&&(!n2||n2.skip||n2.day!=null||(n2.amt!=null&&n2.name))){name+=' '+nx.name;nx.used=1;src.push(i+1)}
    out.push({bill:name,hint,a:a.amt,day,mo,foreign:a.foreign||src.some(j=>A[j].foreign),raw:src.sort((x,y)=>x-y).map(j=>A[j].raw).join(' / '),img:a.img,box:ls.length?{y0:Math.min(...ls.map(x=>x.bbox.y0)),y1:Math.max(...ls.map(x=>x.bbox.y1))}:null});
    pend=null}
   else if(a.name&&!isMeta(a))pend=i}
@@ -637,25 +638,39 @@ async function prep(file){
  const span=Math.max(1,hi-lo);for(let i=0;i<p.length;i+=4){let g=(p[i]-lo)*255/span;g=g<0?0:g>255?255:g;if(inv)g=255-g;p[i]=p[i+1]=p[i+2]=g}
  x.putImageData(d,0,0);return{c,orig};
 }
-function linesOf(data,img){let ls=data.lines;if(!ls?.length&&data.blocks)ls=data.blocks.flatMap(b=>(b.paragraphs||[]).flatMap(p=>p.lines||[]));if(!ls?.length)ls=String(data.text||'').split('\n').map(t=>({text:t}));return ls.map(l=>({text:l.text,bbox:l.bbox,img}))}
+function linesOf(data,img){let ls=data.lines;if(!ls?.length&&data.blocks)ls=data.blocks.flatMap(b=>(b.paragraphs||[]).flatMap(p=>p.lines||[]));if(!ls?.length)ls=String(data.text||'').split('\n').map(t=>({text:t}));return ls.map(l=>({text:l.text,bbox:l.bbox,words:l.words,img}))}
+/* Hebrew+English OCR misreads Latin names as Hebrew; an English-only pass fixes those words */
+function iou(a,b){const x=Math.max(0,Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0)),y=Math.max(0,Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0)),i=x*y,u=(a.x1-a.x0)*(a.y1-a.y0)+(b.x1-b.x0)*(b.y1-b.y0)-i;return u>0?i/u:0}
+function mergeLatin(A,B,img){
+ const lines=linesOf(A,img);if(!B||!lines.some(l=>l.words))return lines;
+ const bw=(B.words||[]).filter(w=>/[A-Za-z]{2,}/.test(w.text)&&!/[א-ת]/.test(w.text)&&w.confidence>=55);
+ return lines.map(l=>{if(!l.words||!l.bbox)return l;const used=new Set();
+  const ws=l.words.map(w=>{let best=null,bi=0;for(const v of bw){const k=iou(w.bbox,v.bbox);if(k>bi){bi=k;best=v}}
+   if(best&&bi>.3&&(best.confidence>w.confidence+5||!/[א-ת0-9]/.test(w.text))){if(used.has(best))return null;used.add(best);return best.text}return w.text}).filter(x=>x!=null);
+  for(const v of bw){if(used.has(v))continue;const yc=(v.bbox.y0+v.bbox.y1)/2;if(yc>l.bbox.y0&&yc<l.bbox.y1&&!l.words.some(w=>iou(w.bbox,v.bbox)>.05)){ws.push(v.text);used.add(v)}}
+  return{text:ws.join(' '),bbox:l.bbox,img}})}
+
 const score=rows=>rows.reduce((s,r)=>s+1+(r.day?.5:0)+((r.bill.match(/\p{L}/gu)||[]).length>3?.3:0),0);
 function cropOf(orig,box){if(!box)return'';const pad=10,y0=Math.max(0,box.y0-pad),h=Math.min(orig.height-y0,box.y1-box.y0+pad*2);if(h<4)return'';const W=Math.min(760,orig.width),k=W/orig.width,c=document.createElement('canvas');c.width=W;c.height=Math.round(h*k);c.getContext('2d').drawImage(orig,0,y0,orig.width,h,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.78)}
 async function runImages(files){
  const urls=files.map(f=>URL.createObjectURL(f));
  try{
   let cur=0,pass=0;const N=files.length*2;prog(.02,'טוען את רכיב זיהוי הטקסט…');await loadJS(TESS);
-  const W=await Tesseract.createWorker(['heb','eng'],1,{logger:m=>{if(!$('#scBar'))return;if(m.status=='recognizing text')prog(.2+.8*((pass+m.progress)/N),`קורא את התמונה ${cur+1} מתוך ${files.length}${pass%2?', קריאה שנייה בשיטה אחרת':''}…`);else if(/load/.test(m.status))prog(.04+.16*(m.progress||0),'מוריד את רכיב העברית (פעם אחת בלבד)…')}});
-  await W.setParameters({preserve_interword_spaces:'1',user_defined_dpi:'300'});
+  const log=m=>{if(!$('#scBar'))return;if(m.status=='recognizing text')prog(.2+.8*Math.min(1,(pass+m.progress)/N),`קורא את התמונה ${cur+1} מתוך ${files.length}…`);else if(/load/.test(m.status))prog(.04+.16*(m.progress||0),'מוריד את רכיבי הזיהוי (פעם אחת בלבד)…')};
+  const W=await Tesseract.createWorker(['heb','eng'],1,{logger:log}),E=await Tesseract.createWorker('eng',1,{logger:log});
+  await W.setParameters({preserve_interword_spaces:'1',user_defined_dpi:'300',tessedit_pageseg_mode:'6'});await E.setParameters({user_defined_dpi:'300',tessedit_pageseg_mode:'6'});
   let all=[],text='';
-  for(cur=0;cur<files.length;cur++){const{c,orig}=await prep(files[cur]);let best=null;
-   for(const psm of['6','4']){await W.setParameters({tessedit_pageseg_mode:psm});const{data}=await W.recognize(c);pass++;const rows=parseOcr(linesOf(data,cur));if(!best||score(rows)>score(best.rows))best={rows,text:data.text}}
-   for(const r of best.rows)r.crop=cropOf(orig,r.box);all.push(...best.rows);text+=(files.length>1?`— תמונה ${cur+1} —\n`:'')+best.text+'\n'}
-  await W.terminate();
-  // same charge twice (overlapping screenshots): keep one
+  for(cur=0;cur<files.length;cur++){const{c,orig}=await prep(files[cur]);
+   const a=(await W.recognize(c)).data;pass++;const b=(await E.recognize(c)).data;pass++;
+   let lines=mergeLatin(a,b,cur),rows=parseOcr(lines),t=lines.map(l=>l.text).join('\n');
+   if(rows.length<2){await W.setParameters({tessedit_pageseg_mode:'4'});const a2=(await W.recognize(c)).data;await W.setParameters({tessedit_pageseg_mode:'6'});const l2=mergeLatin(a2,b,cur),r2=parseOcr(l2);if(score(r2)>score(rows)){rows=r2;t=l2.map(l=>l.text).join('\n')}}
+   for(const r of rows)r.crop=cropOf(orig,r.box);all.push(...rows);text+=(files.length>1?`— תמונה ${cur+1} —\n`:'')+t+'\n'}
+  await W.terminate();await E.terminate();
   const seen=new Set();all=all.filter(r=>{const k=normB(r.bill)+'|'+r.a+'|'+(r.day||'');if(seen.has(k))return false;seen.add(k);return true});
   review(all,{text,urls});
  }catch(e){console.error(e);if($('#scStat'))prog(0,navigator.onLine?'משהו השתבש בזיהוי. נסו שוב, או השתמשו בקובץ אקסל.':'בפעם הראשונה צריך אינטרנט כדי להוריד את רכיב הזיהוי. אחר כך זה עובד גם בלי.')}
 }
+
 
 let R=null;
 function scanDlg(){
@@ -755,10 +770,31 @@ function applyReview(){
 
 /* ---------- boot ---------- */
 const CAP=window.Capacitor,NATIVE=!!CAP?.isNativePlatform?.();
+/* ---------- in-app update (Android) ---------- */
+let UPD=null,Updater=null,appVer=0;
+async function checkUpdate(manual){
+ try{const info=await CAP.Plugins.App.getInfo();appVer=parseInt(String(info.version).split('.')[1])||0;
+  const r=await fetch('https://api.github.com/repos/netchamo/hora-keva/releases/latest',{cache:'no-store'});const j=await r.json();
+  const v=parseInt(String(j.tag_name||'').split('.')[1])||0,asset=(j.assets||[]).find(a=>/\.apk$/.test(a.name));
+  if(v>appVer&&asset){UPD={v,url:asset.browser_download_url,notes:String(j.body||'')};$('#updBtn').hidden=false;if(manual)updDlg()}
+  else if(manual)toast('יש לך את הגרסה האחרונה')}catch(e){if(manual)toast('אין חיבור לבדיקת עדכונים')}
+}
+function updDlg(){openDlg(`${head('עדכון זמין','גרסה 1.'+UPD.v+' (אצלך 1.'+appVer+')')}<div class="db"><p>הנתונים שלך נשמרים בעדכון. אחרי ההורדה אנדרואיד יציג את מסך ההתקנה, ושם מאשרים.</p><p class="note">בפעם הראשונה אנדרואיד יבקש לאשר התקנה מהאפליקציה הזו. מאשרים, חוזרים, ולוחצים שוב על עדכון.</p><div id="updProg" hidden><div class="prog"><i id="updBar"></i></div><p class="note" id="updStat"></p></div></div><div class="df"><button class="btn pri" type="button" data-sa2="upd-go">עדכון עכשיו</button><button class="btn" type="button" data-act="close">אחר כך</button></div>`)}
+async function updGo(){
+ $('#updProg').hidden=false;$('#updStat').textContent='מוריד את העדכון…';
+ try{Updater??=CAP.registerPlugin?CAP.registerPlugin('Updater'):CAP.Plugins.Updater;
+  const h=await Updater.addListener('progress',p=>{if($('#updBar'))$('#updBar').style.width=Math.round(p.progress*100)+'%'});
+  const r=await Updater.install({url:UPD.url});h?.remove?.();
+  $('#updStat').textContent=r?.needsPermission?'אשרו התקנה מהאפליקציה הזו, חזרו ולחצו שוב על עדכון עכשיו':'מסך ההתקנה נפתח. מאשרים שם.';
+ }catch(e){$('#updStat').textContent='ההורדה נכשלה. בדקו את החיבור ונסו שוב.'}
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-sa2]');if(!b)return;if(b.dataset.sa2=='upd-go')updGo();else if(b.dataset.sa2=='upd-open')UPD?updDlg():checkUpdate(true)});
+
 const empty=()=>({v:1,ts:0,sample:false,cats:[],items:[],one:[],notes:{},map:{},gmap:{},set:{range:1,spread:false}});
 S=norm(loadLocal()||empty());pick=0;route();setStatus('נשמר במכשיר');
 try{navigator.storage?.persist?.()}catch(e){}
 if(NATIVE){document.documentElement.classList.add('native');const P=CAP.Plugins;try{P.StatusBar?.setBackgroundColor({color:'#0a2540'});P.StatusBar?.setStyle({style:'DARK'})}catch(e){}
+ checkUpdate(false);
  try{P.App?.addListener('backButton',({canGoBack})=>{if(dlg.open)dlg.close();else if(location.hash&&location.hash!='#list')location.hash='list';else P.App.exitApp()})}catch(e){}}
 $('#installBtn').dataset.act='install';
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('#installBtn').hidden=false});
