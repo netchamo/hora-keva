@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a2540">
-<meta name="hk-build" content="6">
+<meta name="hk-build" content="7">
 <script>
 /* Android app: if a newer build was downloaded earlier, run it instead of the bundled one */
 (function(){try{var C=window.Capacitor;if(!(C&&C.isNativePlatform&&C.isNativePlatform())||window.__hkLive)return;
@@ -534,7 +534,7 @@ const XLSX_URL='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min
 const GROUPS=[
  {n:'ביטוחים',h:['ביטוח'],rec:1,k:['ביטוח','הראל','מגדל','כלל','הפניקס','מנורה','איילון','ליברה','שומרה','פוליסה','aig','wesure']},
  {n:'תקשורת',h:['תקשורת','סלולר','אינטרנט','טלפון'],rec:1,k:['בזק','סלקום','פרטנר','הוט','hot','yes','גולן','פלאפון','019','012','013','018','אינטרנט','סלולר','we4g','xphone']},
- {n:'מנויים',h:['מנוי'],rec:1,k:['netflix','spotify','apple','itunes','google','youtube','disney','prime video','icloud','microsoft','adobe','openai','chatgpt','claude','anthropic','dropbox','canva','patreon','audible','steam','playstation','xbox','nintendo','zoom','notion','github','duolingo','tidal','deezer','מנוי']},
+ {n:'מנויים',h:['מנוי'],rec:1,k:['netflix','spotify','splice','apple','itunes','google','youtube','disney','prime video','icloud','microsoft','adobe','openai','chatgpt','claude','anthropic','dropbox','canva','patreon','audible','steam','playstation','xbox','nintendo','zoom','notion','github','duolingo','tidal','deezer','מנוי']},
  {n:'חשבונות בית',h:['בית','חשבונות','דיור'],rec:1,k:['חברת החשמל','חשמל','ארנונה','עיריית','עירייה','מועצה','תאגיד','מי ','מים','גז','סופרגז','אמישראגז','פזגז','ועד בית']},
  {n:'מזון וסופר',h:['מזון','סופר','אוכל','קניות לבית'],k:['שופרסל','רמי לוי','ויקטורי','יוחננוף','אושר עד','טיב טעם','מגה','סופר','מכולת','יינות ביתן','קרפור','carrefour','חצי חינם','am pm','ampm','פרש מרקט','מחסני השוק','קשת טעמים','זול ובגדול','שוק','מאפיה','ירקות']},
  {n:'רכב ודלק',h:['רכב','דלק','תחבורה'],k:['פז','סונול','דלק','דור אלון','ten','yellow','מוסך','חניה','חניון','פנגו','pango','סלופארק','cellopark','כביש 6','נתיבי','צמיגים','רב קו','רכבת','גט טקסי','gett','yango','מונית']},
@@ -616,7 +616,7 @@ function analyze(raw){
 }
 /* stitches a statement together from OCR lines: name and amount on the same line, or the name on the line above and the date on the line beside it */
 function parseOcr(L,col,Wd){
- const A=L.map(l=>{const a={...analyze(l.text),bbox:l.bbox,img:l.img};if(!a.skip&&l.words){const ms=moneyOf(l);const v=pickAmt(ms,col,Wd);if(v!=null){a.amt=v;if(ms.length&&ms.every(m=>m.cur=='f'))a.foreign=true}}return a});const out=[];let pend=null;
+ const A=L.map(l=>{const a={...analyze(l.text),bbox:l.bbox,img:l.img};if(!a.skip&&l.words){const ds=l.words.filter(w=>w.bbox&&DATE.test(w.text)).sort((p,q)=>q.bbox.x1-p.bbox.x1);if(ds[0]){const m=ds[0].text.match(DATE);if(+m[1]<=31&&+m[2]<=12){a.day=+m[1];a.mo=+m[2]}}const ms=moneyOf(l);const v=pickAmt(ms,col,Wd,rateOf(l));if(v!=null){a.amt=v;if(ms.some(m=>m.cur=='f'))a.foreign=true}}return a});const out=[];let pend=null;
  const isMeta=a=>a&&!a.skip&&a.amt==null&&a.day!=null;
  for(let i=0;i<A.length;i++){const a=A[i];if(a.skip||a.used){continue}
   if(a.amt!=null){let name=a.name,src=[i],hint='';
@@ -670,9 +670,14 @@ function moneyOf(l){
  return out}
 /* the table header ("סכום חיוב") says which column is the shekel amount that left the account */
 function chargeCol(lines,W){for(const l of lines){if(!l.words||!/סכום/.test(l.text))continue;const w=l.words.find(w=>/חיוב|לחיוב/.test(w.text));if(w&&w.bbox)return(w.bbox.x0+w.bbox.x1)/2/W}return null}
-function pickAmt(ms,col,W){if(!ms.length)return null;
- if(col!=null){const x=col*W;const best=ms.reduce((a,b)=>Math.abs(b.xc-x)<Math.abs(a.xc-x)?b:a);if(Math.abs(best.xc-x)<W*.14)return best.v}
- const nis=ms.filter(m=>m.cur!='f');const pool=nis.length?nis:ms;return pool.reduce((a,b)=>b.xc<a.xc?b:a).v}
+/* exchange rate on the line (like 3.1120): foreign rows show amount, rate, fee and the shekel charge */
+function rateOf(l){for(const w of[...(l.nums||[]),...(l.words||[])]){const m=fixNum(String(w.text)).match(/^(\d{1,2}\.\d{3,4})$/);if(m){const r=+m[1];if(r>.2&&r<20)return r}}return null}
+function pickAmt(ms,col,W,rate){if(!ms.length)return null;
+ const fx=ms.filter(m=>m.cur=='f'),nis=ms.filter(m=>m.cur!='f'),pool=nis.length?nis:ms;
+ // a foreign amount × the rate should land on the shekel charge (a small fee may be added)
+ if(fx.length&&rate){const exp=fx[0].v*rate,c=nis.filter(m=>m.v>=exp*.97&&m.v<=exp*1.2);if(c.length)return c.reduce((a,b)=>b.v>a.v?b:a).v;return Math.round(exp*100)/100}
+ if(col!=null){const x=col*W;const best=pool.reduce((a,b)=>Math.abs(b.xc-x)<Math.abs(a.xc-x)?b:a);if(Math.abs(best.xc-x)<W*.14)return best.v}
+ return pool.reduce((a,b)=>b.xc<a.xc?b:a).v}
 
 const score=rows=>rows.reduce((s,r)=>s+1+(r.day?.5:0)+((r.bill.match(/\p{L}/gu)||[]).length>3?.3:0),0);
 function cropOf(orig,box){if(!box)return'';const pad=10,y0=Math.max(0,box.y0-pad),h=Math.min(orig.height-y0,box.y1-box.y0+pad*2);if(h<4)return'';const W=Math.min(760,orig.width),k=W/orig.width,c=document.createElement('canvas');c.width=W;c.height=Math.round(h*k);c.getContext('2d').drawImage(orig,0,y0,orig.width,h,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.78)}
@@ -804,7 +809,7 @@ const BUILD=+(document.querySelector('meta[name=hk-build]')?.content||0);
 async function liveCheck(manual){
  try{const r=await fetch('https://netchamo.github.io/hora-keva/index.html?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw 0;const h=await r.text();
   const b=+(h.match(/name="hk-build" content="(\d+)"/)||[])[1]||0;
-  if(b>BUILD){if(b>(+localStorage.getItem('hk-code-build')||0)){localStorage.setItem('hk-code',h);localStorage.setItem('hk-code-build',String(b))}$('#updBtn').hidden=false;if(manual)location.reload()}
+  if(b>BUILD){if(b>(+localStorage.getItem('hk-code-build')||0)){localStorage.setItem('hk-code',h);localStorage.setItem('hk-code-build',String(b))}$('#updBtn').hidden=false;if(manual||(performance.now()<10000&&!dlg.open))location.reload()}
   else if(manual)toast('יש לך את הגרסה האחרונה')}catch(e){if(manual)toast('אין חיבור לבדיקת עדכונים')}
 }
 document.addEventListener('click',e=>{const b=e.target.closest('[data-sa2]');if(!b)return;if(b.dataset.sa2=='upd-open')liveCheck(true)});
