@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a2540">
-<meta name="hk-build" content="5">
+<meta name="hk-build" content="6">
 <script>
 /* Android app: if a newer build was downloaded earlier, run it instead of the bundled one */
 (function(){try{var C=window.Capacitor;if(!(C&&C.isNativePlatform&&C.isNativePlatform())||window.__hkLive)return;
@@ -615,8 +615,8 @@ function analyze(raw){
  return o;
 }
 /* stitches a statement together from OCR lines: name and amount on the same line, or the name on the line above and the date on the line beside it */
-function parseOcr(L){
- const A=L.map(l=>({...analyze(l.text),bbox:l.bbox,img:l.img}));const out=[];let pend=null;
+function parseOcr(L,col,Wd){
+ const A=L.map(l=>{const a={...analyze(l.text),bbox:l.bbox,img:l.img};if(!a.skip&&l.words){const ms=moneyOf(l);const v=pickAmt(ms,col,Wd);if(v!=null){a.amt=v;if(ms.length&&ms.every(m=>m.cur=='f'))a.foreign=true}}return a});const out=[];let pend=null;
  const isMeta=a=>a&&!a.skip&&a.amt==null&&a.day!=null;
  for(let i=0;i<A.length;i++){const a=A[i];if(a.skip||a.used){continue}
   if(a.amt!=null){let name=a.name,src=[i],hint='';
@@ -650,12 +650,29 @@ function linesOf(data,img){let ls=data.lines;if(!ls?.length&&data.blocks)ls=data
 function iou(a,b){const x=Math.max(0,Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0)),y=Math.max(0,Math.min(a.y1,b.y1)-Math.max(a.y0,b.y0)),i=x*y,u=(a.x1-a.x0)*(a.y1-a.y0)+(b.x1-b.x0)*(b.y1-b.y0)-i;return u>0?i/u:0}
 function mergeLatin(A,B,img){
  const lines=linesOf(A,img);if(!B||!lines.some(l=>l.words))return lines;
- const bw=(B.words||[]).filter(w=>/[A-Za-z]{2,}/.test(w.text)&&!/[א-ת]/.test(w.text)&&w.confidence>=55);
+ const bwAll=(B.words||[]).filter(w=>w.bbox),bw=bwAll.filter(w=>/[A-Za-z]{2,}/.test(w.text)&&!/[א-ת]/.test(w.text)&&w.confidence>=55);
  return lines.map(l=>{if(!l.words||!l.bbox)return l;const used=new Set();
   const ws=l.words.map(w=>{let best=null,bi=0;for(const v of bw){const k=iou(w.bbox,v.bbox);if(k>bi){bi=k;best=v}}
-   if(best&&bi>.3&&(best.confidence>w.confidence+5||!/[א-ת0-9]/.test(w.text))){if(used.has(best))return null;used.add(best);return best.text}return w.text}).filter(x=>x!=null);
-  for(const v of bw){if(used.has(v))continue;const yc=(v.bbox.y0+v.bbox.y1)/2;if(yc>l.bbox.y0&&yc<l.bbox.y1&&!l.words.some(w=>iou(w.bbox,v.bbox)>.05)){ws.push(v.text);used.add(v)}}
-  return{text:ws.join(' '),bbox:l.bbox,img}})}
+   if(best&&bi>.3&&(best.confidence>w.confidence+5||!/[א-ת0-9]/.test(w.text))){if(used.has(best))return null;used.add(best);return{text:best.text,bbox:w.bbox}}return{text:w.text,bbox:w.bbox}}).filter(Boolean);
+  for(const v of bw){if(used.has(v))continue;const yc=(v.bbox.y0+v.bbox.y1)/2;if(yc>l.bbox.y0&&yc<l.bbox.y1&&!l.words.some(w=>iou(w.bbox,v.bbox)>.05)){ws.push({text:v.text,bbox:v.bbox});used.add(v)}}
+  // the English pass reads digits better: keep its numbers on this line for the amount columns
+  const nums=bwAll.filter(v=>/\d/.test(v.text)&&(v.bbox.y0+v.bbox.y1)/2>l.bbox.y0&&(v.bbox.y0+v.bbox.y1)/2<l.bbox.y1).map(v=>({text:v.text,bbox:v.bbox}));
+  return{text:ws.map(w=>w.text).join(' '),bbox:l.bbox,words:ws,nums,img}})}
+/* money on a line, each with its horizontal position and whether it is in foreign currency */
+const fixNum=t=>t.replace(/[oO](?=\d)|(?<=\d)[oO]/g,'0').replace(/(?<=\d)[lI|]|[lI|](?=\d)/g,'1');
+function moneyOf(l){
+ const src=[...(l.words||[]),...(l.nums||[])],out=[];
+ for(const w of src){if(!w.bbox)continue;const t=fixNum(String(w.text));const m=t.match(/-?\d{1,3}(?:,\d{3})+(?:\.\d{1,2})?|-?\d+[.,]\d{2}(?!\d)/);if(!m)continue;
+  const v=Math.abs(+m[0].replace(/,(?=\d{3})/g,'').replace(',','.'));if(!v||v>500000)continue;
+  const xc=(w.bbox.x0+w.bbox.x1)/2,near=src.filter(o=>o.bbox&&Math.abs((o.bbox.x0+o.bbox.x1)/2-xc)<(w.bbox.x1-w.bbox.x0)*1.4+40).map(o=>o.text).join(' ');
+  const cur=/[$€£]|usd|eur/i.test(t)?'f':/₪|ש"ח/.test(t)?'s':/[$€£]|usd|eur/i.test(near)?'f':'';
+  if(out.some(o=>Math.abs(o.xc-xc)<25&&o.v==v))continue;out.push({v,xc,cur})}
+ return out}
+/* the table header ("סכום חיוב") says which column is the shekel amount that left the account */
+function chargeCol(lines,W){for(const l of lines){if(!l.words||!/סכום/.test(l.text))continue;const w=l.words.find(w=>/חיוב|לחיוב/.test(w.text));if(w&&w.bbox)return(w.bbox.x0+w.bbox.x1)/2/W}return null}
+function pickAmt(ms,col,W){if(!ms.length)return null;
+ if(col!=null){const x=col*W;const best=ms.reduce((a,b)=>Math.abs(b.xc-x)<Math.abs(a.xc-x)?b:a);if(Math.abs(best.xc-x)<W*.14)return best.v}
+ const nis=ms.filter(m=>m.cur!='f');const pool=nis.length?nis:ms;return pool.reduce((a,b)=>b.xc<a.xc?b:a).v}
 
 const score=rows=>rows.reduce((s,r)=>s+1+(r.day?.5:0)+((r.bill.match(/\p{L}/gu)||[]).length>3?.3:0),0);
 function cropOf(orig,box){if(!box)return'';const pad=10,y0=Math.max(0,box.y0-pad),h=Math.min(orig.height-y0,box.y1-box.y0+pad*2);if(h<4)return'';const W=Math.min(760,orig.width),k=W/orig.width,c=document.createElement('canvas');c.width=W;c.height=Math.round(h*k);c.getContext('2d').drawImage(orig,0,y0,orig.width,h,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.78)}
@@ -666,12 +683,15 @@ async function runImages(files){
   const log=m=>{if(!$('#scBar'))return;if(m.status=='recognizing text')prog(.2+.8*Math.min(1,(pass+m.progress)/N),`קורא את התמונה ${cur+1} מתוך ${files.length}…`);else if(/load/.test(m.status))prog(.04+.16*(m.progress||0),'מוריד את רכיבי הזיהוי (פעם אחת בלבד)…')};
   const W=await Tesseract.createWorker(['heb','eng'],1,{logger:log}),E=await Tesseract.createWorker('eng',1,{logger:log});
   await W.setParameters({preserve_interword_spaces:'1',user_defined_dpi:'300',tessedit_pageseg_mode:'6'});await E.setParameters({user_defined_dpi:'300',tessedit_pageseg_mode:'6'});
-  let all=[],text='';
+  let all=[],text='';const pages=[];
   for(cur=0;cur<files.length;cur++){const{c,orig}=await prep(files[cur]);
    const a=(await W.recognize(c)).data;pass++;const b=(await E.recognize(c)).data;pass++;
-   let lines=mergeLatin(a,b,cur),rows=parseOcr(lines),t=lines.map(l=>l.text).join('\n');
-   if(rows.length<2){await W.setParameters({tessedit_pageseg_mode:'4'});const a2=(await W.recognize(c)).data;await W.setParameters({tessedit_pageseg_mode:'6'});const l2=mergeLatin(a2,b,cur),r2=parseOcr(l2);if(score(r2)>score(rows)){rows=r2;t=l2.map(l=>l.text).join('\n')}}
-   for(const r of rows)r.crop=cropOf(orig,r.box);all.push(...rows);text+=(files.length>1?`— תמונה ${cur+1} —\n`:'')+t+'\n'}
+   pages.push({c,orig,b,lines:mergeLatin(a,b,cur)})}
+  let colAll=null;for(const p of pages){const k=chargeCol(p.lines,p.c.width);if(k!=null){p.col=k;colAll??=k}}
+  for(cur=0;cur<pages.length;cur++){const p=pages[cur],col=p.col??colAll;
+   let rows=parseOcr(p.lines,col,p.c.width),t=p.lines.map(l=>l.text).join('\n');
+   if(rows.length<2){await W.setParameters({tessedit_pageseg_mode:'4'});const a2=(await W.recognize(p.c)).data;await W.setParameters({tessedit_pageseg_mode:'6'});const l2=mergeLatin(a2,p.b,cur),r2=parseOcr(l2,col,p.c.width);if(score(r2)>score(rows)){rows=r2;t=l2.map(l=>l.text).join('\n')}}
+   for(const r of rows)r.crop=cropOf(p.orig,r.box);all.push(...rows);text+=(pages.length>1?`— תמונה ${cur+1} —\n`:'')+t+'\n'}
   await W.terminate();await E.terminate();
   const seen=new Set();all=all.filter(r=>{const k=normB(r.bill)+'|'+r.a+'|'+(r.day||'');if(seen.has(k))return false;seen.add(k);return true});
   review(all,{text,urls});
