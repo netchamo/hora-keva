@@ -1,5 +1,5 @@
 // מטמון לעבודה בלי אינטרנט. מעלים את הגרסה בכל שינוי בקבצים.
-const V = 'hk-v1';
+const V = 'hk-v2';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/maskable-512.png', 'icons/apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
@@ -20,7 +20,7 @@ self.addEventListener('fetch', e => {
     return;
   }
   // גופנים וקבצים סטטיים: מהמטמון, ומתעדכנים ברקע
-  if (u.origin === location.origin || /fonts\.(googleapis|gstatic)\.com$/.test(u.hostname)) {
+  if (u.origin === location.origin || /(fonts\.(googleapis|gstatic)\.com|cdn\.jsdelivr\.net|cdnjs\.cloudflare\.com|tessdata\.projectnaptha\.com)$/.test(u.hostname)) {
     e.respondWith(caches.open(V).then(async c => {
       const hit = await c.match(r);
       const net = fetch(r).then(res => { if (res.ok || res.type === 'opaque') c.put(r, res.clone()); return res; }).catch(() => hit);
