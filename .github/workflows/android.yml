@@ -43,19 +43,32 @@ jobs:
           rm -rf $RES/mipmap-anydpi-v26
           rm -f $RES/mipmap-*/ic_launcher_foreground.png
           cp -r android-build/res/. $RES/
-          JAVA=android/app/src/main/java/com/netchamo/horakeva
-          cp android-build/java/*.java $JAVA/
-          grep -q REQUEST_INSTALL_PACKAGES android/app/src/main/AndroidManifest.xml || sed -i 's#</manifest>#    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n</manifest>#' android/app/src/main/AndroidManifest.xml
           sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
-          mkdir -p ~/.android
-          cp android-build/debug.keystore ~/.android/debug.keystore
+          cat >> android/app/build.gradle <<'GRADLE'
+
+          android {
+              signingConfigs {
+                  hk {
+                      storeFile file("${rootDir}/../android-build/debug.keystore")
+                      storePassword "android"
+                      keyAlias "androiddebugkey"
+                      keyPassword "android"
+                  }
+              }
+              buildTypes {
+                  release { signingConfig signingConfigs.hk; minifyEnabled false }
+                  debug { signingConfig signingConfigs.hk }
+              }
+          }
+          GRADLE
 
       - name: Build APK
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
-          cp app/build/outputs/apk/debug/app-debug.apk ../hora-keva.apk
+          ./gradlew assembleRelease --no-daemon
+          cp app/build/outputs/apk/release/app-release.apk ../hora-keva.apk
+          keytool -printcert -jarfile ../hora-keva.apk | grep SHA256
 
       - name: Publish release
         uses: softprops/action-gh-release@v2

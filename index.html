@@ -4,6 +4,13 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a2540">
+<meta name="hk-build" content="5">
+<script>
+/* Android app: if a newer build was downloaded earlier, run it instead of the bundled one */
+(function(){try{var C=window.Capacitor;if(!(C&&C.isNativePlatform&&C.isNativePlatform())||window.__hkLive)return;
+var own=+document.querySelector('meta[name=hk-build]').content,cb=+localStorage.getItem('hk-code-build')||0,code=localStorage.getItem('hk-code');
+if(code&&cb>own)window.__hkSwap=code}catch(e){}})();
+</script>
 <meta name="description" content="מעקב פשוט אחרי הוראות קבע, מנויים והוצאות חודשיות. הנתונים נשמרים במכשיר בלבד.">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
@@ -232,7 +239,7 @@ table{font-size:13px}th,td{padding:6px 4px}
  <div class="wrap">
   <div class="top">
    <h1>הוראות קבע ומנויים</h1>
-   <div class="status"><span id="saveState">טוען…</span><button type="button" id="installBtn" hidden>התקנה</button><button type="button" id="updBtn" data-sa2="upd-open" hidden style="background:var(--pink);border-color:var(--pink)">עדכון זמין</button><button type="button" data-act="settings" aria-label="הגדרות וגיבוי">הגדרות וגיבוי</button></div>
+   <div class="status"><span id="saveState">טוען…</span><button type="button" id="installBtn" hidden>התקנה</button><button type="button" id="updBtn" data-sa2="upd-open" hidden style="background:var(--pink);border-color:var(--pink)">עדכון מוכן, להפעלה</button><button type="button" data-act="settings" aria-label="הגדרות וגיבוי">הגדרות וגיבוי</button></div>
   </div>
   <div class="hero">
    <div class="kpi">
@@ -298,7 +305,7 @@ table{font-size:13px}th,td{padding:6px 4px}
 <div class="toast" id="toast" hidden><span id="toastT"></span><button type="button" id="toastU">ביטול</button></div>
 
 <script>
-{
+if(!window.__hkSwap){
 const MN=['ינו׳','פבר׳','מרץ','אפר׳','מאי','יוני','יולי','אוג׳','ספט׳','אוק׳','נוב׳','דצמ׳'];
 const MF=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
 const FR={m:'חודשי',b:'דו חודשי',y:'שנתי'};
@@ -465,7 +472,7 @@ function settingsDlg(){openDlg(`${head('הגדרות וגיבוי')}<div class="
  <div class="fl"><label for="stRange">כמה שנים אחורה להציג</label><select id="stRange">${[1,2,3,4,5,6,7].map(n=>`<option value="${n}" ${n==S.set.range?'selected':''}>${n==1?'שנה אחת':n+' שנים'}</option>`).join('')}</select></div>
  <div class="fl"><span>גיבוי</span><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" type="button" data-act="exp-dl">הורדת קובץ גיבוי</button><button class="btn" type="button" data-act="exp-copy">העתקת הגיבוי</button></div></div>
  <div class="fl"><label for="impT">שחזור מגיבוי</label><input type="file" id="impF" accept=".json,application/json" aria-label="קובץ גיבוי"><textarea id="impT" placeholder="או הדביקו כאן את טקסט הגיבוי"></textarea><button class="btn" type="button" data-act="imp">שחזור (מחליף את כל הנתונים)</button></div>
- ${NATIVE?`<div class="fl"><span>גרסה 1.${appVer}</span><button class="btn" type="button" data-sa2="upd-open">בדיקת עדכונים</button></div>`:'<div class="fl"><span>אפליקציה לטלפון</span><a class="btn" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:inherit" href="https://github.com/netchamo/hora-keva/releases/latest/download/hora-keva.apk">הורדת האפליקציה לאנדרואיד</a><span class="note">הנתונים באפליקציה ובדפדפן נפרדים. מעבירים ביניהם עם קובץ גיבוי.</span></div>'}
+ ${NATIVE?`<div class="fl"><span>גרסה ${BUILD}</span><button class="btn" type="button" data-sa2="upd-open">בדיקת עדכונים</button></div>`:'<div class="fl"><span>אפליקציה לטלפון</span><a class="btn" style="display:inline-flex;align-items:center;justify-content:center;text-decoration:none;color:inherit" href="https://github.com/netchamo/hora-keva/releases/latest/download/hora-keva.apk">הורדת האפליקציה לאנדרואיד</a><span class="note">הנתונים באפליקציה ובדפדפן נפרדים. מעבירים ביניהם עם קובץ גיבוי.</span></div>'}
  <p class="note">הנתונים נשמרים רק במכשיר ובדפדפן הזה, ושום דבר לא נשלח לשום מקום. כדי להעביר למכשיר אחר: מורידים גיבוי כאן ומשחזרים אותו שם. ${S.set.lastBackup?'גיבוי אחרון: '+new Date(S.set.lastBackup).toLocaleDateString('he-IL'):'עוד לא נעשה גיבוי.'}</p>
  </div><div class="df"><button class="btn pri" type="button" data-act="close">סגירה</button><span class="sp"></span><button class="btn dan" type="button" data-act="wipe">מחיקת כל הנתונים</button></div>`);
  $('#stRange').addEventListener('change',e=>{S.set.range=+e.target.value;commit()});
@@ -770,31 +777,23 @@ function applyReview(){
 
 /* ---------- boot ---------- */
 const CAP=window.Capacitor,NATIVE=!!CAP?.isNativePlatform?.();
-/* ---------- in-app update (Android) ---------- */
-let UPD=null,Updater=null,appVer=0;
-async function checkUpdate(manual){
- try{const info=await CAP.Plugins.App.getInfo();appVer=parseInt(String(info.version).split('.')[1])||0;
-  const r=await fetch('https://api.github.com/repos/netchamo/hora-keva/releases/latest',{cache:'no-store'});const j=await r.json();
-  const v=parseInt(String(j.tag_name||'').split('.')[1])||0,asset=(j.assets||[]).find(a=>/\.apk$/.test(a.name));
-  if(v>appVer&&asset){UPD={v,url:asset.browser_download_url,notes:String(j.body||'')};$('#updBtn').hidden=false;if(manual)updDlg()}
+/* ---------- live code updates (Android) ----------
+   The app keeps running its bundled copy. When GitHub Pages has a newer build
+   (meta hk-build), it is saved here and used from the next start. Data stays put. */
+const BUILD=+(document.querySelector('meta[name=hk-build]')?.content||0);
+async function liveCheck(manual){
+ try{const r=await fetch('https://netchamo.github.io/hora-keva/index.html?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw 0;const h=await r.text();
+  const b=+(h.match(/name="hk-build" content="(\d+)"/)||[])[1]||0;
+  if(b>BUILD){if(b>(+localStorage.getItem('hk-code-build')||0)){localStorage.setItem('hk-code',h);localStorage.setItem('hk-code-build',String(b))}$('#updBtn').hidden=false;if(manual)location.reload()}
   else if(manual)toast('יש לך את הגרסה האחרונה')}catch(e){if(manual)toast('אין חיבור לבדיקת עדכונים')}
 }
-function updDlg(){openDlg(`${head('עדכון זמין','גרסה 1.'+UPD.v+' (אצלך 1.'+appVer+')')}<div class="db"><p>הנתונים שלך נשמרים בעדכון. אחרי ההורדה אנדרואיד יציג את מסך ההתקנה, ושם מאשרים.</p><p class="note">בפעם הראשונה אנדרואיד יבקש לאשר התקנה מהאפליקציה הזו. מאשרים, חוזרים, ולוחצים שוב על עדכון.</p><div id="updProg" hidden><div class="prog"><i id="updBar"></i></div><p class="note" id="updStat"></p></div></div><div class="df"><button class="btn pri" type="button" data-sa2="upd-go">עדכון עכשיו</button><button class="btn" type="button" data-act="close">אחר כך</button></div>`)}
-async function updGo(){
- $('#updProg').hidden=false;$('#updStat').textContent='מוריד את העדכון…';
- try{Updater??=CAP.registerPlugin?CAP.registerPlugin('Updater'):CAP.Plugins.Updater;
-  const h=await Updater.addListener('progress',p=>{if($('#updBar'))$('#updBar').style.width=Math.round(p.progress*100)+'%'});
-  const r=await Updater.install({url:UPD.url});h?.remove?.();
-  $('#updStat').textContent=r?.needsPermission?'אשרו התקנה מהאפליקציה הזו, חזרו ולחצו שוב על עדכון עכשיו':'מסך ההתקנה נפתח. מאשרים שם.';
- }catch(e){$('#updStat').textContent='ההורדה נכשלה. בדקו את החיבור ונסו שוב.'}
-}
-document.addEventListener('click',e=>{const b=e.target.closest('[data-sa2]');if(!b)return;if(b.dataset.sa2=='upd-go')updGo();else if(b.dataset.sa2=='upd-open')UPD?updDlg():checkUpdate(true)});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-sa2]');if(!b)return;if(b.dataset.sa2=='upd-open')liveCheck(true)});
 
 const empty=()=>({v:1,ts:0,sample:false,cats:[],items:[],one:[],notes:{},map:{},gmap:{},set:{range:1,spread:false}});
 S=norm(loadLocal()||empty());pick=0;route();setStatus('נשמר במכשיר');
 try{navigator.storage?.persist?.()}catch(e){}
 if(NATIVE){document.documentElement.classList.add('native');const P=CAP.Plugins;try{P.StatusBar?.setBackgroundColor({color:'#0a2540'});P.StatusBar?.setStyle({style:'DARK'})}catch(e){}
- checkUpdate(false);
+ liveCheck(false);
  try{P.App?.addListener('backButton',({canGoBack})=>{if(dlg.open)dlg.close();else if(location.hash&&location.hash!='#list')location.hash='list';else P.App.exitApp()})}catch(e){}}
 $('#installBtn').dataset.act='install';
 window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferred=e;$('#installBtn').hidden=false});
@@ -803,5 +802,6 @@ window.addEventListener('storage',e=>{if(e.key===LS){S=norm(loadLocal()||empty()
 if(!NATIVE&&'serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
 </script>
+<script>if(window.__hkSwap){var hkH=window.__hkSwap;window.__hkSwap=null;window.__hkLive=1;addEventListener('load',function(){document.open();document.write(hkH);document.close()})}</script>
 </body>
 </html>
