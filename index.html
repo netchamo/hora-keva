@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0a2540">
-<meta name="hk-build" content="12">
+<meta name="hk-build" content="13">
 <script>
 /* Android app: if a newer build was downloaded earlier, run it instead of the bundled one */
 (function(){try{var C=window.Capacitor;if(!(C&&C.isNativePlatform&&C.isNativePlatform())||window.__hkLive)return;
@@ -184,6 +184,7 @@ dialog.wide{width:min(980px,calc(100vw - 16px))}
 .mini{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex:none}
 .mini button{border:0;background:none;min-height:42px;padding:0 12px;cursor:pointer}
 .mini button.on{background:var(--sea);color:#fff}
+.inst{display:inline-flex;gap:6px;align-items:center;font-size:14px}.inst input{width:64px!important;min-height:42px}
 .mini button.on.cr{background:var(--ok)}
 .crin{color:var(--ok);font-weight:700}
 .rv2 .btn{min-height:42px;flex:none}
@@ -337,7 +338,7 @@ table{font-size:13px}th,td{padding:6px 4px}
 if(!window.__hkSwap){
 const MN=['ינו׳','פבר׳','מרץ','אפר׳','מאי','יוני','יולי','אוג׳','ספט׳','אוק׳','נוב׳','דצמ׳'];
 const MF=['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
-const FR={m:'חודשי',b:'דו חודשי',y:'שנתי'};
+const FR={m:'חודשי',b:'דו חודשי',y:'שנתי',n:'בתשלומים'};
 const $=s=>document.querySelector(s);
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,10);
@@ -365,8 +366,12 @@ function sample(){
  S0.one=one.map(([k,name,a,day,cat])=>{const{y,m}=at(k);return{id:uid(),ym:key(y,m),name,a,day,cat}});
  return S0;
 }
-function due(x,y,m){if(!x.act)return false;if(x.f=='m')return true;if(x.f=='b')return mod(m-x.m,2)==0;return m==x.m}
-const meq=x=>x.f=='m'?x.a:x.f=='b'?x.a/2:x.a/12;
+const mdiff=(k1,k2)=>{const a=parse(k1),b=parse(k2);return(b.y-a.y)*12+(b.m-a.m)};
+/* payment plans (10, 11 payments...): number of this month's payment, 0 when outside the plan */
+const instNo=(x,y,m)=>{if(x.f!='n'||!x.st)return 0;const i=mdiff(x.st,key(y,m))+1;return i>=1&&i<=(x.n||1)?i:0};
+const instLabel=(x,k)=>{if(x.f!='n')return'';const p=parse(k),i=instNo(x,p.y,p.m);return i?`תשלום ${i} מתוך ${x.n}`:''};
+function due(x,y,m){if(!x.act)return false;if(x.f=='n')return instNo(x,y,m)>0;if(x.f=='m')return true;if(x.f=='b')return mod(m-x.m,2)==0;return m==x.m}
+const meq=x=>x.f=='n'?(instNo(x,CY,CM)?x.a:0):x.f=='m'?x.a:x.f=='b'?x.a/2:x.a/12;
 const catName=id=>S.cats.find(c=>c.id==id)?.name||'ללא קטגוריה';
 const paidRec=k=>S.items.reduce((s,x)=>s+(+x.paid[k]||0),0);
 const oneSum=k=>S.one.filter(o=>o.ym==k).reduce((s,o)=>s+(+o.a||0),0);
@@ -399,7 +404,7 @@ function renderHead(){
 
 /* ---------- list view ---------- */
 function dotsFor(x){let h='';for(let k=-11;k<=0;k++){const{y,m}=at(k),kk=key(y,m);const p=x.paid[kk]!=null,d=due(x,y,m);h+=`<i class="${p?'p':d?(k==0?'no':'due'):'no'}" title="${MF[m]} ${y}"></i>`}return h}
-function itemRow(x){const sub=x.f=='y'?`${MF[x.m]}, ${fmt(x.a/12)} לחודש`:x.f=='b'?`${fmt(x.a/2)} לחודש`:'';
+function itemRow(x){const ck=key(CY,CM),il=instLabel(x,ck);const sub=x.f=='n'?(il||(x.st&&mdiff(x.st,ck)<0?'עוד לא התחיל':'התשלומים הסתיימו')):x.f=='y'?`${MF[x.m]}, ${fmt(x.a/12)} לחודש`:x.f=='b'?`${fmt(x.a/2)} לחודש`:'';
  return`<div class="it ${x.act?'':'off'}"><div class="nm"><b>${esc(x.name)}</b><small>${esc(x.bill||'—')}</small></div><span class="chip ${x.f=='y'?'y':''}">${FR[x.f]}${x.day?' · '+esc(x.day)+' לחודש':''}${x.deb=='now'?' · מיידי':''}${x.spr?' · פריסה':''}${x.act?'':' · מושהה'}</span><button type="button" class="dots" data-act="hist" data-id="${x.id}" aria-label="היסטוריית תשלומים של ${esc(x.name)}">${dotsFor(x)}</button><div class="amt">${fmt(x.a)}${sub?`<small>${esc(sub)}</small>`:''}</div><button type="button" class="ic" data-act="edit" data-id="${x.id}" aria-label="עריכה">${ico.edit}</button></div>`}
 function renderList(){
  const q=$('#q').value.trim().toLowerCase();const match=x=>!q||(x.name+' '+x.bill).toLowerCase().includes(q);
@@ -420,7 +425,7 @@ function renderMonth(){
  const dirS=S.items.reduce((s,x)=>s+(x.deb=='now'&&x.paid[k]!=null?+x.paid[k]:0),0)+S.one.filter(o=>o.ym==k&&o.deb=='now').reduce((s,o)=>s+(+o.a||0),0);
  $('#mStats').innerHTML=`<div class="stat"><span>סה״כ החודש</span><b>${fmt(pr+os)}</b></div><div class="stat"><span>הוראות קבע</span><b>${fmt(pr)}</b></div><div class="stat"><span>חיובים</span><b>${fmt(os)}</b></div><div class="stat"><span>ירד מיד מהחשבון</span><b>${fmt(dirS)}</b></div><div class="stat"><span>בחיוב הכרטיס</span><b>${fmt(pr+os-dirS)}</b></div><div class="stat"><span>${mk>0?'צפוי בקבועות':'עוד לא סומנו'}</span><b>${mk>0?fmt(exp):miss}</b></div>`;
  rec.sort((a,b)=>catName(a.cat).localeCompare(catName(b.cat),'he'));
- $('#mRec').innerHTML=rec.length?rec.map(x=>{const p=x.paid[k]!=null;return`<div class="li"><input type="checkbox" data-act="mpaid" data-id="${x.id}" ${p?'checked':''} aria-label="ירד: ${esc(x.name)}"><div class="nm"><b>${esc(x.name)}</b><small>${esc(x.bill||'')} · ${esc(catName(x.cat))}${x.day?' · ב־'+esc(x.day)+' לחודש':''}${x.deb=='now'?' · ירד מיד':''}</small></div>${p?`<input class="ain num" type="number" step="0.01" data-act="mamt" data-id="${x.id}" value="${+x.paid[k]}" aria-label="סכום בפועל">`:`<span class="amt" style="color:var(--mut)">${fmt(x.a)}</span>`}</div>`}).join(''):'<div class="empty">אין חיובים קבועים בחודש הזה</div>';
+ $('#mRec').innerHTML=rec.length?rec.map(x=>{const p=x.paid[k]!=null;return`<div class="li"><input type="checkbox" data-act="mpaid" data-id="${x.id}" ${p?'checked':''} aria-label="ירד: ${esc(x.name)}"><div class="nm"><b>${esc(x.name)}</b><small>${esc(x.bill||'')} · ${esc(catName(x.cat))}${x.day?' · ב־'+esc(x.day)+' לחודש':''}${x.deb=='now'?' · ירד מיד':''}${instLabel(x,k)?' · '+instLabel(x,k):''}</small></div>${p?`<input class="ain num" type="number" step="0.01" data-act="mamt" data-id="${x.id}" value="${+x.paid[k]}" aria-label="סכום בפועל">`:`<span class="amt" style="color:var(--mut)">${fmt(x.a)}</span>`}</div>`}).join(''):'<div class="empty">אין חיובים קבועים בחודש הזה</div>';
  const os_=S.one.filter(o=>o.ym==k).sort((a,b)=>(a.day||0)-(b.day||0));
  const byc={};for(const o of os_)(byc[catName(o.cat)]??=[]).push(o);
  $('#mOne').innerHTML=os_.length?Object.entries(byc).sort((a,b)=>b[1].reduce((s,o)=>s+ +o.a,0)-a[1].reduce((s,o)=>s+ +o.a,0)).map(([cn,list])=>`<div class="cg"><h4><span>${esc(cn)}</span><span class="num">${fmt(list.reduce((s,o)=>s+ +o.a,0))}</span></h4>${list.map(o=>`<div class="od"><span class="day">${o.day?esc(o.day):'—'}</span><div class="nm" data-act="one-edit" data-id="${o.id}" style="cursor:pointer"><b>${esc(o.name)}</b><small>${o.bill&&o.bill!=o.name?esc(o.bill)+' · ':''}${o.a<0?'זיכוי · ':''}${o.deb=='now'?'ירד מיד מהחשבון':'בחיוב הכרטיס'}</small></div><span class="amt ${o.a<0?'cr':''}">${fmt(o.a)}</span><button type="button" class="ic" data-act="one-del" data-id="${o.id}" aria-label="מחיקה">${ico.x}</button></div>`).join('')}</div>`).join(''):'<div class="empty">אין חיובים בחודש הזה</div>';
@@ -466,11 +471,11 @@ function monthsWithData(){const set=new Set();for(const o of S.one)set.add(o.ym)
 function regOf(e,k){const{y,m}=parse(k);let n=0;for(let i=0;i<12;i++){const d=new Date(y,m-i,1),kk=key(d.getFullYear(),d.getMonth());
  if(e.kind=='rec'){if(S.items.find(x=>x.id==e.id)?.paid[kk]!=null)n++}else if(S.one.some(o=>o.ym==kk&&okey(o)==e.k))n++}return n}
 function chargesOf(k){const out=[];
- for(const x of S.items)if(x.paid[k]!=null)out.push({kind:'rec',id:x.id,name:x.name,bill:x.bill,cat:x.cat,a:+x.paid[k],day:x.day,deb:x.deb||'card',k:normB(x.bill||x.name)});
+ for(const x of S.items)if(x.paid[k]!=null)out.push({kind:'rec',il:instLabel(x,k),id:x.id,name:x.name,bill:x.bill,cat:x.cat,a:+x.paid[k],day:x.day,deb:x.deb||'card',k:normB(x.bill||x.name)});
  for(const o of S.one)if(o.ym==k)out.push({kind:'one',id:o.id,name:o.name,bill:o.bill,cat:o.cat,a:+o.a,day:o.day,deb:o.deb||'card',k:okey(o)});
  for(const e of out)e.reg=regOf(e,k);return out}
 const SORTS={'amt-desc':(a,b)=>b.a-a.a,'amt-asc':(a,b)=>a.a-b.a,'date-desc':(a,b)=>(b.day||0)-(a.day||0),'date-asc':(a,b)=>(a.day||99)-(b.day||99),'reg-desc':(a,b)=>b.reg-a.reg||b.a-a.a};
-function chRow(e){return`<button type="button" class="chr" data-act="ch-open" data-kind="${e.kind}" data-id="${e.id}"><span class="day">${e.day?esc(e.day):'—'}</span><span class="nm"><b>${esc(e.name)}</b><small>${e.bill&&e.bill!=e.name?esc(e.bill)+' · ':''}${e.kind=='rec'?'הוראת קבע':'חד פעמי'}${e.deb=='now'?' · ירד מיד':''}${e.a<0?' · זיכוי':''}</small></span><span class="reg" title="הופיע ב־${e.reg} מתוך 12 החודשים האחרונים"><i style="width:${e.reg/12*100}%"></i></span><span class="amt ${e.a<0?'cr':''}">${fmt(e.a)}</span></button>`}
+function chRow(e){return`<button type="button" class="chr" data-act="ch-open" data-kind="${e.kind}" data-id="${e.id}"><span class="day">${e.day?esc(e.day):'—'}</span><span class="nm"><b>${esc(e.name)}</b><small>${e.bill&&e.bill!=e.name?esc(e.bill)+' · ':''}${e.kind=='rec'?(e.il||'הוראת קבע'):'חד פעמי'}${e.deb=='now'?' · ירד מיד':''}${e.a<0?' · זיכוי':''}</small></span><span class="reg" title="הופיע ב־${e.reg} מתוך 12 החודשים האחרונים"><i style="width:${e.reg/12*100}%"></i></span><span class="amt ${e.a<0?'cr':''}">${fmt(e.a)}</span></button>`}
 function chGroups(list){const by={};for(const e of list)(by[catName(e.cat)]??=[]).push(e);
  return Object.entries(by).map(([n,l])=>[n,l.sort(SORTS[chS]),l.reduce((s,e)=>s+e.a,0)]).sort((a,b)=>b[2]-a[2]).map(([n,l,t])=>`<div class="chg"><h4><span>${esc(n)} <em>${l.length}</em></span><span class="num">${fmt(t)}</span></h4>${l.map(chRow).join('')}</div>`).join('')}
 function renderCharges(){
@@ -533,16 +538,18 @@ function itemDlg(x,cat){const n=!x;x=x||{f:'m',a:'',m:CM,cat:cat||S.cats[0]?.id|
  <div class="fl"><label for="fBill">איך זה מופיע בדף החיובים</label><input type="text" id="fBill" value="${esc(x.bill)}" placeholder="השם כפי שהוא כתוב בפירוט האשראי"></div>
  <div class="two"><div class="fl"><label for="fAmt">סכום לחיוב</label><input type="number" id="fAmt" step="0.01" min="0" inputmode="decimal" value="${esc(x.a)}" required></div><div class="fl"><label for="fCat">קטגוריה</label><select id="fCat"><option value="">ללא קטגוריה</option>${S.cats.map(c=>`<option value="${c.id}" ${c.id==x.cat?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div></div>
  <div class="fl"><span>תדירות</span><div class="seg">${Object.entries(FR).map(([k,v])=>`<label><input type="radio" name="fFreq" value="${k}" ${x.f==k?'checked':''}><span>${v}</span></label>`).join('')}</div></div>
+ <div class="two" id="fNW"><div class="fl"><label for="fN">כמה תשלומים בסך הכול</label><input type="number" id="fN" min="2" max="60" inputmode="numeric" value="${esc(x.n||'')}" placeholder="למשל 11"></div><div class="fl"><label for="fK">החודש הוא תשלום מספר</label><input type="number" id="fK" min="1" max="60" inputmode="numeric" value="${x.f=='n'&&x.st?mdiff(x.st,key(CY,CM))+1:''}" placeholder="למשל 8"></div></div>
  <div class="fl" id="fMW"><label for="fM" id="fML"></label><select id="fM">${MF.map((v,i)=>`<option value="${i}" ${i==x.m?'selected':''}>${v}</option>`).join('')}</select></div>
  <div class="two"><div class="fl"><label for="fDay">יום החיוב בחודש</label><input type="number" id="fDay" min="1" max="31" inputmode="numeric" value="${esc(x.day||'')}" placeholder="למשל 14"></div><div class="fl"><label for="fDeb">איך זה יורד מהחשבון</label><select id="fDeb"><option value="card" ${x.deb!='now'?'selected':''}>בחיוב הכרטיס בסוף החודש</option><option value="now" ${x.deb=='now'?'selected':''}>ירד מיד (חיוב מחו״ל או מיידי)</option></select></div></div>
  <label class="sw" id="fSprW"><input type="checkbox" id="fSpr" ${x.spr?'checked':''}>לפרוס על כל השנה בסיכומים (מוצג בנפרד, בגוון אחר)</label>
  <label class="sw"><input type="checkbox" id="fAct" ${x.act?'checked':''}>פעיל (בטלו סימון כשההוראה הופסקה, ההיסטוריה נשמרת)</label>
  <div class="fl"><label for="fNote">הערה</label><input type="text" id="fNote" value="${esc(x.note)}" placeholder="מספר פוליסה, תאריך חידוש, טלפון לביטול"></div>
  </div><div class="df"><button class="btn pri" type="submit">שמירה</button><button class="btn" type="button" data-act="close">ביטול</button><span class="sp"></span>${n?'':`<button class="btn dan" type="button" data-act="item-del" data-id="${x.id}">מחיקה</button>`}</div></form>`);
- const sync=()=>{const f=document.querySelector('[name=fFreq]:checked').value;$('#fMW').hidden=f=='m';$('#fSprW').hidden=f!='y';$('#fML').textContent=f=='y'?'באיזה חודש זה יורד':'חודש חיוב (ומשם כל חודשיים)'};sync();
+ const sync=()=>{const f=document.querySelector('[name=fFreq]:checked').value;$('#fMW').hidden=f=='m'||f=='n';$('#fNW').hidden=f!='n';$('#fSprW').hidden=f!='y';$('#fML').textContent=f=='y'?'באיזה חודש זה יורד':'חודש חיוב (ומשם כל חודשיים)'};sync();
  $('#fItem').addEventListener('change',sync);
  $('#fItem').addEventListener('submit',e=>{e.preventDefault();const f=document.querySelector('[name=fFreq]:checked').value;
   const d={name:$('#fName').value.trim(),bill:$('#fBill').value.trim(),a:+$('#fAmt').value||0,cat:$('#fCat').value,f,m:+$('#fM').value,spr:f=='y'&&$('#fSpr').checked,act:$('#fAct').checked,note:$('#fNote').value.trim(),day:+$('#fDay').value||null,deb:$('#fDeb').value};
+  if(f=='n'){const N=Math.max(2,+$('#fN').value||2),K=Math.min(N,Math.max(1,+$('#fK').value||1)),s0=at(-(K-1));d.n=N;d.st=key(s0.y,s0.m)}
   if(n)S.items.push({id:uid(),sel:true,paid:{},...d});else Object.assign(S.items.find(i=>i.id==x.id),d);
   dlg.close();toast(n?'נוסף':'נשמר');commit()});
  setTimeout(()=>$('#fName').focus(),30);
@@ -678,7 +685,7 @@ function fromTable(rows){
  const out=[];let ci=null;
  if(hi>=0){const h=rows[hi];const ch=h.findIndex(c=>/סכום\s*ה?חיוב|לחיוב/.test(c));ci={d:h.findIndex(c=>/תאריך/.test(c)),n:h.findIndex(c=>/בית\s*ה?עסק|תיאור|פירוט|שם/.test(c)),a:ch>=0?ch:h.findIndex(c=>/סכום/.test(c))};if(ci.n<0||ci.a<0)ci=null}
  for(const r of rows.slice(hi+1)){if(!r.some(Boolean))continue;const all=r.join('  ');
-  if(ci){const name=r[ci.n];const rawA=String(r[ci.a]),v=+rawA.replace(/[^\d.]/g,'')*(/-/.test(rawA)?-1:1);if(!name||!v||SKIP.test(all))continue;const dm=(r[ci.d]||'').match(DATE);out.push({credit:v<0||/זיכוי|החזר/.test(all),bill:name.replace(/[$€£]\s?\d[\d.,]*/g,' ').replace(/\s{2,}/g,' ').trim(),a:Math.round(Math.abs(v)*100)/100,day:dm?+dm[1]:null,mo:dm?+dm[2]:null,foreign:/[$€£]|usd|eur|דולר|יורו/i.test(all),raw:r.filter(Boolean).join(' · ')})}
+  if(ci){const name=r[ci.n];const rawA=String(r[ci.a]),v=+rawA.replace(/[^\d.]/g,'')*(/-/.test(rawA)?-1:1);if(!name||!v||SKIP.test(all))continue;const dm=(r[ci.d]||'').match(DATE);out.push({inst:(m=>m&&+m[2]>=+m[1]?{k:+m[1],n:+m[2]}:null)(all.match(/(\d{1,2})\s*מתוך\s*(\d{1,2})/)),credit:v<0||/זיכוי|החזר/.test(all),bill:name.replace(/[$€£]\s?\d[\d.,]*/g,' ').replace(/\s{2,}/g,' ').trim(),a:Math.round(Math.abs(v)*100)/100,day:dm?+dm[1]:null,mo:dm?+dm[2]:null,foreign:/[$€£]|usd|eur|דולר|יורו/i.test(all),raw:r.filter(Boolean).join(' · ')})}
   else{const p=parseLine(all);if(p)out.push(p)}}
  return out;
 }
@@ -704,6 +711,7 @@ function analyze(raw){
  const dm=t.match(DATE);if(dm&&+dm[1]>=1&&+dm[1]<=31&&+dm[2]>=1&&+dm[2]<=12){o.day=+dm[1];o.mo=+dm[2];t=t.replace(dm[0],' ')}
  else{const hm=t.match(/(\d{1,2})\s*(?:ב|ל)?\s*(ינו|פבר|מרץ|מרס|אפר|מאי|יונ|יול|אוג|ספט|אוק|נוב|דצמ|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[\p{L}׳']*/iu);if(hm){o.day=+hm[1];o.mo=HM[hm[2].toLowerCase()];t=t.replace(hm[0],' ')}
   else if(/(^|\s)היום(\s|$)/.test(t)){o.day=now.getDate();o.mo=CM+1;t=t.replace('היום',' ')}else if(/(^|\s)אתמול(\s|$)/.test(t)){const d=new Date(Date.now()-864e5);o.day=d.getDate();o.mo=d.getMonth()+1;t=t.replace('אתמול',' ')}}
+ const im=t.match(/תשלום\s*(\d{1,2})\s*(?:מתוך|מ-?)\s*(\d{1,2})|(\d{1,2})\s*מתוך\s*(\d{1,2})/);if(im){const k=+(im[1]||im[3]),n=+(im[2]||im[4]);if(k>=1&&n>=2&&k<=n&&n<=60){o.inst={k,n};t=t.replace(im[0],' ')}}
  const km=t.match(/(^|\s)(ה\.?\s?קבע|הוראת קבע|לא הוצג|רגילה|תשלומים|חיוב מיידי)(?=\s|$)/);if(km){o.kind=/קבע/.test(km[2])?'rec':'one';t=t.replace(km[0],' ')}
  o.foreign=/[$€£]|usd|eur|gbp|דולר|יורו|מט"?ח/i.test(t);o.credit=/זיכוי|החזר כספי|ביטול עסקה/.test(t)||/(^|\s)[-−]\s?\d[\d,]*\.\d{2}|\d\.\d{2}\s?[-−](\s|$)/.test(t);
  // OCR fixes inside numbers: O→0, l/I→1, "1 020.50" → 1020.50, "245,90" → 245.90
@@ -759,7 +767,7 @@ function parseOcr(L,col,Wd){
    if(day==null)for(const j of[i+1,i-1,i+2,i-2]){const b=A[j];if(b&&b.amt==null&&b.day!=null&&!b.usedDate){day=b.day;mo=b.mo;b.usedDate=1;src.push(j);break}}
    const ls=src.map(j=>A[j]).filter(x=>x.bbox&&x.img===a.img);
    const nx=A[i+1],n2=A[i+2];if(nx&&!nx.skip&&!nx.used&&nx.amt==null&&nx.day==null&&nx.name&&nx.name.split(' ').length<=3&&(!n2||n2.skip||n2.day!=null||(n2.amt!=null&&n2.name))){if((name.match(/\p{L}/gu)||[]).length<5)name+=' '+nx.name;nx.used=1}
-   out.push({credit:!!a.credit,bill:name,hint:hint||a.branch||'',kind:a.kind,calc:a.calc,calcOk:a.calcOk,a:a.amt,day,mo,foreign:a.foreign||src.some(j=>A[j].foreign),raw:src.sort((x,y)=>x-y).map(j=>A[j].raw).join(' / '),img:a.img,box:ls.length?{y0:Math.min(...ls.map(x=>x.bbox.y0)),y1:Math.max(...ls.map(x=>x.bbox.y1))}:null});
+   out.push({inst:a.inst||null,credit:!!a.credit,bill:name,hint:hint||a.branch||'',kind:a.kind,calc:a.calc,calcOk:a.calcOk,a:a.amt,day,mo,foreign:a.foreign||src.some(j=>A[j].foreign),raw:src.sort((x,y)=>x-y).map(j=>A[j].raw).join(' / '),img:a.img,box:ls.length?{y0:Math.min(...ls.map(x=>x.bbox.y0)),y1:Math.max(...ls.map(x=>x.bbox.y1))}:null});
    grp.push(out.at(-1));pend=null}
   else if(a.name&&!isMeta(a))pend=i}
  return out;
@@ -868,9 +876,9 @@ function buildRow(p,ym){
  const byName=S.cats.filter(c=>normB(c.name).length>2&&normB(p.bill).includes(normB(c.name)))[0];
  let near=null,ns=0;if(!mp)for(const[k,v]of Object.entries(S.map)){if(!has(v.cat))continue;const sc=sim(k,nb);if(sc>ns){ns=sc;near=v}}
  if(mp&&has(mp.cat))cat=mp.cat;else if(it&&has(it.cat))cat=it.cat;else if(near&&ns>=.55)cat=near.cat;else if(byName)cat=byName.id;else if(g&&has(S.gmap[g.n]))cat=S.gmap[g.n];else if(g){const ex=S.cats.filter(c=>g.h.some(h=>c.name.includes(h))).sort((x,y)=>sim(y.name,p.bill)-sim(x.name,p.bill))[0];if(ex)cat=ex.id;else cat='p:'+g.n}
- const rec=mp?!!mp.rec:(!!it||p.kind=='rec');
+ const rec=mp?!!mp.rec:(!!it||p.kind=='rec'||!!p.inst);
  const st=mp?'known':it?'match':(weird(p.bill)&&!g)?'weird':'new';
- const r={id:uid(),on:true,kind:p.kind||'',calc:p.calc||'',calcOk:p.calcOk,date:p.day?p.day+(p.mo?'/'+p.mo:''):'',crop:p.crop||'',raw:p.raw||'',bill:p.bill,name:mp?.name||(it?it.name:''),a:p.a,credit:!!p.credit,day:p.day,cat,rec,item:it?it.id:'new',f:it?it.f:'m',deb:mp?.deb||it?.deb||(p.direct||p.foreign?'now':'card'),debDay:p.debDay||'',sumOk:p.sumOk||0,st,sugRec:!it&&!mp&&g?.rec};
+ const r={id:uid(),on:true,kind:p.kind||'',calc:p.calc||'',calcOk:p.calcOk,date:p.day?p.day+(p.mo?'/'+p.mo:''):'',crop:p.crop||'',raw:p.raw||'',bill:p.bill,name:mp?.name||(it?it.name:''),a:p.a,credit:!!p.credit,day:p.day,cat,rec,item:it?it.id:'new',f:it?it.f:(p.inst?'n':'m'),instK:p.inst?.k||'',instN:p.inst?.n||'',deb:mp?.deb||it?.deb||(p.direct||p.foreign?'now':'card'),debDay:p.debDay||'',sumOk:p.sumOk||0,st,sugRec:!it&&!mp&&g?.rec};
  r.g=st=='weird'?0:rec?1:2;r.gn=g?.n||'';r.auto=!mp&&!it;
  if(isDup(r,ym))r.on=false;return r;
 }
@@ -890,9 +898,9 @@ function rowHTML(r,i){const dup=isDup(r,R.ym);const tag=dup?['dup','נראה ש�
  ${r.crop?`<img class="crop" src="${r.crop}" alt="השורה מהתמונה">`:r.raw?`<div class="rawl">נקרא מהדף: ${esc(r.raw)}</div>`:''}
  <div class="rv2"><input type="text" data-rf="name" value="${esc(r.name)}" placeholder="${r.st=='weird'?'תן לזה שם שתזהה':'השם שלי: '+esc(clean(r.bill))}" aria-label="השם שלי"><div style="display:flex;gap:8px"><select data-rf="cat" aria-label="קטגוריה">${catOpts(r)}</select>${r.cat=='__new'?`<input type="text" class="ncat" placeholder="שם הקטגוריה" aria-label="שם הקטגוריה החדשה" enterkeyhint="done"><button class="btn pri" type="button" data-sa="ncat">הוספה</button>`:''}</div></div>
  <div class="rv3"><div class="mini" role="group" aria-label="חיוב או זיכוי"><button type="button" data-sa="cr0" class="${r.credit?'':'on'}">חיוב</button><button type="button" data-sa="cr1" class="${r.credit?'on cr':''}">זיכוי</button></div><div class="mini" role="group" aria-label="סוג"><button type="button" data-sa="rec0" class="${r.rec?'':'on'}">חד פעמי</button><button type="button" data-sa="rec1" class="${r.rec?'on':''}">הוראת קבע</button></div>
- ${r.rec?`<select data-rf="item" aria-label="איזו הוראת קבע"><option value="new">הוראת קבע חדשה</option>${S.items.map(x=>`<option value="${x.id}" ${x.id==r.item?'selected':''}>${esc(x.name)}</option>`).join('')}</select>${r.item=='new'?`<select data-rf="f" aria-label="תדירות">${Object.entries(FR).map(([k,v])=>`<option value="${k}" ${r.f==k?'selected':''}>${v}</option>`).join('')}</select>`:''}`:''}
+ ${r.rec?`<select data-rf="item" aria-label="איזו הוראת קבע"><option value="new">הוראת קבע חדשה</option>${S.items.map(x=>`<option value="${x.id}" ${x.id==r.item?'selected':''}>${esc(x.name)}</option>`).join('')}</select>${r.item=='new'?`<select data-rf="f" aria-label="תדירות">${Object.entries(FR).map(([k,v])=>`<option value="${k}" ${r.f==k?'selected':''}>${v}</option>`).join('')}</select>${r.f=='n'?`<span class="inst">תשלום <input type="number" data-rf="instK" value="${esc(r.instK)}" aria-label="מספר התשלום"> מתוך <input type="number" data-rf="instN" value="${esc(r.instN)}" aria-label="סך התשלומים"></span>`:''}`:''}`:''}
  <select data-rf="deb" aria-label="איך יורד מהחשבון"><option value="card" ${r.deb=='card'?'selected':''}>בחיוב הכרטיס בסוף החודש</option><option value="now" ${r.deb=='now'?'selected':''}>ירד מיד מהחשבון</option></select>
- ${r.kind=='rec'?'<span class="note">בדף מסומן כהוראת קבע</span>':r.sugRec&&!r.rec?'<span class="note">נראה כמו מנוי, אולי הוראת קבע?</span>':''}${r.debDay?`<span class="note">ירד מהחשבון ב־${esc(r.debDay)}${r.sumOk==1?', תואם לסה״כ של אותו יום':''}</span>`:''}${r.sumOk==-1?'<span class="note" style="color:var(--pink)">הסכומים לא מסתכמים לסה״כ של אותו יום, כדאי לבדוק</span>':''}</div></div>`}
+ ${r.instK&&r.instN?`<span class="note">תשלום ${esc(r.instK)} מתוך ${esc(r.instN)}</span>`:''}${r.kind=='rec'?'<span class="note">בדף מסומן כהוראת קבע</span>':r.sugRec&&!r.rec?'<span class="note">נראה כמו מנוי, אולי הוראת קבע?</span>':''}${r.debDay?`<span class="note">ירד מהחשבון ב־${esc(r.debDay)}${r.sumOk==1?', תואם לסה״כ של אותו יום':''}</span>`:''}${r.sumOk==-1?'<span class="note" style="color:var(--pink)">הסכומים לא מסתכמים לסה״כ של אותו יום, כדאי לבדוק</span>':''}</div></div>`}
 function renderReview(){
  const on=R.rows.filter(r=>r.on),tot=on.reduce((s,r)=>s+(r.credit?-1:1)*(+r.a||0),0);
  const mOpts=[];for(let i=1;i>=-24;i--){const p=at(i),k=key(p.y,p.m);mOpts.push(`<option value="${k}" ${k==R.ym?'selected':''}>${MF[p.m]} ${p.y}</option>`)}
@@ -932,7 +940,7 @@ function applyReview(){
   r.day=parseInt(String(r.date||'').split(/[\/.\-]/)[0])||null;if(r.day>31)r.day=null;
   const cat=String(r.cat).startsWith('p:')?ensureCat(r.cat.slice(2)):r.cat=='__new'?'':r.cat;const amt=(r.credit?-1:1)*Math.abs(+r.a);const nm=String(r.name||'').trim()||clean(r.bill)||r.bill;let it=null;
   if(r.rec&&!r.credit){it=r.item!='new'?S.items.find(x=>x.id==r.item):null;
-   if(!it){it={id:uid(),name:nm,bill:r.bill,cat,f:r.f||'m',a:+r.a,m,spr:false,act:true,sel:true,note:'',paid:{},deb:r.deb,day:r.day||null};S.items.push(it)}
+   if(!it){it={id:uid(),name:nm,bill:r.bill,cat,f:r.f||'m',a:+r.a,m,spr:false,act:true,sel:true,note:'',paid:{},deb:r.deb,day:r.day||null};if(it.f=='n'){const N=Math.max(2,+r.instN||12),K=Math.min(N,Math.max(1,+r.instK||1));it.n=N;it.st=key(new Date(y,m-(K-1),1).getFullYear(),new Date(y,m-(K-1),1).getMonth())}S.items.push(it)}
    else{if(!it.bill)it.bill=r.bill;if(r.day&&!it.day)it.day=r.day}
    it.paid[ym]=+r.a}
   else S.one.push({id:uid(),ym,name:nm,bill:r.bill,a:amt,day:r.day||null,cat,deb:r.deb});
@@ -941,6 +949,19 @@ function applyReview(){
   n++}
  touch();dlg.close();mk=(y-CY)*12+(m-CM);toast(`נשמרו ${n} שורות ב${MF[m]}`,u);commit();location.hash='month';
 }
+
+/* ---------- typing and turning the phone ----------
+   keeps the field you type in above the keyboard, and keeps your place when the screen rotates */
+function keepFocus(){const el=document.activeElement;if(!el||!/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)||el.type=='checkbox'||el.type=='file')return;
+ const vv=window.visualViewport,r=el.getBoundingClientRect(),bottom=vv?vv.height+vv.offsetTop:innerHeight,foot=dlg.open?(dlg.querySelector('.df')?.getBoundingClientRect().height||0):0;
+ if(r.bottom>bottom-foot-12||r.top<70)el.scrollIntoView({block:'center',behavior:'smooth'})}
+document.addEventListener('focusin',()=>{setTimeout(keepFocus,320);setTimeout(keepFocus,700)});
+window.visualViewport?.addEventListener('resize',()=>setTimeout(keepFocus,80));
+let anchor=null,lastW=innerWidth;
+function grabAnchor(){const inD=dlg.open,b=inD?dlg.getBoundingClientRect():{top:0,left:0,width:innerWidth,height:innerHeight};const el=document.elementFromPoint(b.left+b.width/2,b.top+Math.min(b.height*.4,inD?160:innerHeight*.4));if(el&&el!==dlg&&el!==document.body)anchor={el,top:el.getBoundingClientRect().top,inD}}
+const onScroll=()=>{clearTimeout(grabAnchor.t);grabAnchor.t=setTimeout(grabAnchor,150)};
+addEventListener('scroll',onScroll,{passive:true});dlg.addEventListener('scroll',onScroll,{passive:true});
+addEventListener('resize',()=>{if(innerWidth===lastW)return;lastW=innerWidth;const a=anchor;if(!a||!a.el.isConnected)return;const fix=()=>{if(!a.el.isConnected)return;const d=a.el.getBoundingClientRect().top-a.top;const sc=a.inD&&dlg.open?dlg:document.scrollingElement;sc.scrollTop+=d};requestAnimationFrame(()=>{fix();setTimeout(fix,200);setTimeout(()=>{fix();keepFocus()},500)})});
 
 /* ---------- boot ---------- */
 const CAP=window.Capacitor,NATIVE=!!CAP?.isNativePlatform?.();

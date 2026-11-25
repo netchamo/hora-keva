@@ -43,6 +43,7 @@ jobs:
           rm -rf $RES/mipmap-anydpi-v26
           rm -f $RES/mipmap-*/ic_launcher_foreground.png
           cp -r android-build/res/. $RES/
+          grep -q windowSoftInputMode android/app/src/main/AndroidManifest.xml || sed -i 's#android:name=".MainActivity"#android:name=".MainActivity" android:windowSoftInputMode="adjustResize"#' android/app/src/main/AndroidManifest.xml
           sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
           cat >> android/app/build.gradle <<'GRADLE'
 
